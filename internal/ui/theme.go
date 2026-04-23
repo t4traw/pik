@@ -73,10 +73,44 @@ func (d *darkTheme) Size(name fyne.ThemeSizeName) float32 {
 	return theme.DefaultTheme().Size(name)
 }
 
-// Diff line colors
+// Diff line & gutter colors — VS Code-ish palette.
+// Base tints are intentionally subtle so syntax-highlighted text stays readable;
+// emphasis colors are vivid so word-level diffs pop against the base tint.
 var (
-	ColorAdd    = color.NRGBA{R: 0x0e, G: 0x46, B: 0x2d, A: 0xff}
-	ColorDel    = color.NRGBA{R: 0x5a, G: 0x1d, B: 0x1d, A: 0xff}
+	ColorAdd     = color.NRGBA{R: 0x14, G: 0x30, B: 0x1e, A: 0xff} // subtle green tint
+	ColorDel     = color.NRGBA{R: 0x3a, G: 0x1a, B: 0x1a, A: 0xff} // subtle red tint
+	ColorAddEmph = color.NRGBA{R: 0x28, G: 0x86, B: 0x36, A: 0xff} // vivid green (word diff)
+	ColorDelEmph = color.NRGBA{R: 0xb0, G: 0x3a, B: 0x3a, A: 0xff} // vivid red (word diff)
+
+	ColorAddStripe = color.NRGBA{R: 0x3f, G: 0xa8, B: 0x4a, A: 0xff} // left-edge stripe for added lines
+	ColorDelStripe = color.NRGBA{R: 0xd0, G: 0x40, B: 0x40, A: 0xff} // left-edge stripe for removed lines
+
 	ColorHunk   = color.NRGBA{R: 0x26, G: 0x26, B: 0x3d, A: 0xff}
 	ColorHeader = color.NRGBA{R: 0x2a, G: 0x2a, B: 0x2a, A: 0xff}
+
+	ColorGutterBG = color.NRGBA{R: 0x1a, G: 0x1a, B: 0x1a, A: 0xff}
+	ColorGutterFG = color.NRGBA{R: 0x6a, G: 0x6a, B: 0x6a, A: 0xff}
+
+	ColorDefaultFG = color.NRGBA{R: 0xd4, G: 0xd4, B: 0xd4, A: 0xff}
+)
+
+// Syntax highlight palette (VS Code Dark+ style).
+var (
+	ColorSynKeyword  = color.NRGBA{R: 0x56, G: 0x9c, B: 0xd6, A: 0xff} // blue
+	ColorSynType     = color.NRGBA{R: 0x4e, G: 0xc9, B: 0xb0, A: 0xff} // teal
+	ColorSynString   = color.NRGBA{R: 0xce, G: 0x91, B: 0x78, A: 0xff} // orange-brown
+	ColorSynNumber   = color.NRGBA{R: 0xb5, G: 0xce, B: 0xa8, A: 0xff} // light green
+	ColorSynComment  = color.NRGBA{R: 0x6a, G: 0x99, B: 0x55, A: 0xff} // green
+	ColorSynFunc     = color.NRGBA{R: 0xdc, G: 0xdc, B: 0xaa, A: 0xff} // pale yellow
+	ColorSynVar      = color.NRGBA{R: 0x9c, G: 0xdc, B: 0xfe, A: 0xff} // light blue
+	ColorSynOp       = color.NRGBA{R: 0xd4, G: 0xd4, B: 0xd4, A: 0xff} // default fg
+	ColorSynPunct    = color.NRGBA{R: 0xd4, G: 0xd4, B: 0xd4, A: 0xff}
+	ColorSynConst    = color.NRGBA{R: 0x4f, G: 0xc1, B: 0xff, A: 0xff} // brighter blue
+	ColorSynBuiltin  = color.NRGBA{R: 0xdc, G: 0xdc, B: 0xaa, A: 0xff}
+	ColorSynTag      = color.NRGBA{R: 0x56, G: 0x9c, B: 0xd6, A: 0xff}
+	ColorSynAttr     = color.NRGBA{R: 0x9c, G: 0xdc, B: 0xfe, A: 0xff}
+	ColorSynEscape   = color.NRGBA{R: 0xd7, G: 0xba, B: 0x7d, A: 0xff}
+	ColorSynError    = color.NRGBA{R: 0xf4, G: 0x47, B: 0x47, A: 0xff}
+	ColorSynNamespc  = color.NRGBA{R: 0x4e, G: 0xc9, B: 0xb0, A: 0xff}
+	ColorSynOther    = color.NRGBA{R: 0xd4, G: 0xd4, B: 0xd4, A: 0xff}
 )

@@ -20,12 +20,16 @@ type App struct {
 	win     fyne.Window
 	repo    *git.Repo
 
-	fileList   *FileList
-	diffView   *DiffView
-	commitMsg  *widget.Entry
-	commitBtn  *widget.Button
-	branchLbl  *canvas.Text
-	statusText *widget.Label
+	fileList    *FileList
+	diffView    *DiffView
+	commitMsg   *widget.Entry
+	commitBtn   *widget.Button
+	branchLbl   *canvas.Text
+	statusText  *widget.Label
+	modeBtn     *widget.Button
+
+	currentPath   string
+	currentStaged bool
 }
 
 func Run(repo *git.Repo) error {
@@ -85,6 +89,9 @@ func (a *App) build() {
 	a.branchLbl.TextStyle = fyne.TextStyle{Bold: true}
 	a.branchLbl.TextSize = 12
 
+	a.modeBtn = widget.NewButtonWithIcon("Split", theme.ViewRestoreIcon(), a.toggleMode)
+	a.modeBtn.Importance = widget.LowImportance
+
 	a.statusText = widget.NewLabel("")
 
 	// Keyboard shortcut: Cmd/Ctrl+Enter to commit
@@ -99,9 +106,10 @@ func (a *App) content() fyne.CanvasObject {
 	refreshBtn := widget.NewButtonWithIcon("", theme.ViewRefreshIcon(), a.refresh)
 	refreshBtn.Importance = widget.LowImportance
 
+	rightBar := container.NewHBox(a.modeBtn, refreshBtn)
 	title := container.NewBorder(nil, nil,
 		container.NewPadded(a.branchLbl),
-		refreshBtn,
+		rightBar,
 		widget.NewLabel(a.repo.Root),
 	)
 	titleBG := canvas.NewRectangle(color.NRGBA{R: 0x25, G: 0x25, B: 0x26, A: 0xff})
@@ -158,6 +166,9 @@ func (a *App) refresh() {
 }
 
 func (a *App) showDiff(path string, staged bool) {
+	a.currentPath = path
+	a.currentStaged = staged
+
 	var diff string
 	var err error
 	// detect untracked to use --no-index
@@ -178,7 +189,17 @@ func (a *App) showDiff(path string, staged bool) {
 		a.diffView.SetEmpty("diff取得エラー: " + err.Error())
 		return
 	}
-	a.diffView.SetDiff(diff)
+	a.diffView.SetDiff(diff, path)
+}
+
+func (a *App) toggleMode() {
+	if a.diffView.Mode() == ModeUnified {
+		a.diffView.SetMode(ModeSplit)
+		a.modeBtn.SetText("Unified")
+	} else {
+		a.diffView.SetMode(ModeUnified)
+		a.modeBtn.SetText("Split")
+	}
 }
 
 func (a *App) do(fn func() error) {

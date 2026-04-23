@@ -138,7 +138,13 @@ func (r *Repo) Stage(path string) error {
 }
 
 func (r *Repo) Unstage(path string) error {
-	_, err := r.run("restore", "--staged", "--", path)
+	if r.hasHEAD() {
+		_, err := r.run("restore", "--staged", "--", path)
+		return err
+	}
+	// No commits yet — remove the entry from the index without touching the
+	// working tree. The file goes back to untracked.
+	_, err := r.run("rm", "--cached", "--", path)
 	return err
 }
 
@@ -157,8 +163,19 @@ func (r *Repo) StageAll() error {
 }
 
 func (r *Repo) UnstageAll() error {
-	_, err := r.run("reset")
+	if r.hasHEAD() {
+		_, err := r.run("reset")
+		return err
+	}
+	// No HEAD — empty the index instead.
+	_, err := r.run("rm", "-r", "--cached", "--", ".")
 	return err
+}
+
+func (r *Repo) hasHEAD() bool {
+	cmd := exec.Command("git", "rev-parse", "--verify", "--quiet", "HEAD")
+	cmd.Dir = r.Root
+	return cmd.Run() == nil
 }
 
 func (r *Repo) Commit(msg string) error {
