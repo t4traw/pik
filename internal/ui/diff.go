@@ -21,18 +21,23 @@ const (
 
 const (
 	gutterNumW = 5 // chars for a line number
+
+	// If raw diff bytes exceed this, syntax highlighting is skipped for
+	// speed. Still shows colors for +/- lines and word-level emphasis.
+	highlightByteLimit = 40 * 1024
 )
 
 type DiffView struct {
 	widget.BaseWidget
-	grid     *widget.TextGrid
-	empty    *widget.Label
+	grid      *widget.TextGrid
+	empty     *widget.Label
 	container *fyne.Container
 
 	mode     ViewMode
 	filename string
 	files    []FileDiff
 	emptyMsg string
+	skipHL   bool // skip chroma for this diff (large file)
 }
 
 func NewDiffView() *DiffView {
@@ -65,11 +70,13 @@ func (d *DiffView) SetEmpty(msg string) {
 	d.emptyMsg = msg
 	d.files = nil
 	d.filename = ""
+	d.skipHL = false
 	d.render()
 }
 
 func (d *DiffView) SetDiff(raw, filename string) {
 	d.filename = filename
+	d.skipHL = len(raw) > highlightByteLimit
 	d.files = ParseUnifiedDiff(raw)
 	d.emptyMsg = ""
 	if len(d.files) == 0 {
@@ -127,29 +134,17 @@ func (d *DiffView) fileHeaderRow(f FileDiff) widget.TextGridRow {
 	if title == "" && len(f.Preamble) > 0 {
 		title = f.Preamble[0]
 	}
-	rowBG := ColorHeader
-	st := &widget.CustomTextGridStyle{
-		FGColor:   color.NRGBA{R: 0x9c, G: 0xdc, B: 0xfe, A: 0xff},
-		BGColor:   rowBG,
-		TextStyle: fyne.TextStyle{Bold: true, Monospace: true},
-	}
 	return widget.TextGridRow{
-		Cells: runesWithStyle(" "+title, st),
-		Style: &widget.CustomTextGridStyle{BGColor: rowBG},
+		Cells: runesWithStyle(" "+title, fileHeaderStyle),
+		Style: fileHeaderRowStyle,
 	}
 }
 
 func (d *DiffView) hunkHeaderRow(h Hunk) widget.TextGridRow {
-	rowBG := ColorHunk
-	st := &widget.CustomTextGridStyle{
-		FGColor: color.NRGBA{R: 0xc5, G: 0xa3, B: 0xff, A: 0xff},
-		BGColor: rowBG,
-	}
-	// Indent so the @@ aligns roughly with the content column.
 	indent := strings.Repeat(" ", unifiedGutterChars())
 	return widget.TextGridRow{
-		Cells: runesWithStyle(indent+h.Header, st),
-		Style: &widget.CustomTextGridStyle{BGColor: rowBG},
+		Cells: runesWithStyle(indent+h.Header, hunkHeaderStyle),
+		Style: hunkHeaderRowStyle,
 	}
 }
 
@@ -157,12 +152,13 @@ func (d *DiffView) hunkHeaderRow(h Hunk) widget.TextGridRow {
 // context lines pass through, then runs of consecutive removes/adds are emitted
 // as "all removes, then all adds", with word-level emphasis on paired lines.
 func (d *DiffView) buildUnifiedRows(h Hunk) []widget.TextGridRow {
+	tokens := d.tokenizeHunk(h)
 	var rows []widget.TextGridRow
 	i := 0
 	for i < len(h.Lines) {
 		l := h.Lines[i]
 		if l.Type == LineContext {
-			rows = append(rows, d.unifiedContentRow(l.OldLineNo, l.NewLineNo, nil, color.Transparent, l.Text, nil, nil))
+			rows = append(rows, d.unifiedContentRow(l.OldLineNo, l.NewLineNo, ctxBGSpec, l.Text, tokens[i], nil))
 			i++
 			continue
 		}
@@ -170,49 +166,44 @@ func (d *DiffView) buildUnifiedRows(h Hunk) []widget.TextGridRow {
 			i++
 			continue
 		}
-		// Collect the run of removes.
 		rStart := i
 		for i < len(h.Lines) && h.Lines[i].Type == LineRemove {
 			i++
 		}
-		removes := h.Lines[rStart:i]
-		// Collect the following run of adds.
+		rEnd := i
 		aStart := i
 		for i < len(h.Lines) && h.Lines[i].Type == LineAdd {
 			i++
 		}
-		adds := h.Lines[aStart:i]
+		aEnd := i
 
-		pairN := len(removes)
-		if len(adds) < pairN {
-			pairN = len(adds)
+		nRem := rEnd - rStart
+		nAdd := aEnd - aStart
+		pairN := nRem
+		if nAdd < pairN {
+			pairN = nAdd
 		}
-		// Precompute word diff for paired lines.
 		leftSegs := make([][]Segment, pairN)
 		rightSegs := make([][]Segment, pairN)
 		for k := 0; k < pairN; k++ {
-			leftSegs[k], rightSegs[k] = PairWordDiff(removes[k].Text, adds[k].Text)
+			leftSegs[k], rightSegs[k] = PairWordDiff(h.Lines[rStart+k].Text, h.Lines[aStart+k].Text)
 		}
 
-		// Emit all removes first.
-		for k, r := range removes {
+		for k := 0; k < nRem; k++ {
+			r := h.Lines[rStart+k]
 			var segs []Segment
 			if k < pairN {
 				segs = leftSegs[k]
 			}
-			rows = append(rows, d.unifiedContentRow(r.OldLineNo, 0,
-				&bgSpec{line: ColorDel, stripe: ColorDelStripe, emph: ColorDelEmph},
-				color.Transparent, r.Text, segs, nil))
+			rows = append(rows, d.unifiedContentRow(r.OldLineNo, 0, delBGSpec, r.Text, tokens[rStart+k], segs))
 		}
-		// Then all adds.
-		for k, a := range adds {
+		for k := 0; k < nAdd; k++ {
+			a := h.Lines[aStart+k]
 			var segs []Segment
 			if k < pairN {
 				segs = rightSegs[k]
 			}
-			rows = append(rows, d.unifiedContentRow(0, a.NewLineNo,
-				&bgSpec{line: ColorAdd, stripe: ColorAddStripe, emph: ColorAddEmph},
-				color.Transparent, a.Text, segs, nil))
+			rows = append(rows, d.unifiedContentRow(0, a.NewLineNo, addBGSpec, a.Text, tokens[aStart+k], segs))
 		}
 	}
 	return rows
@@ -220,8 +211,8 @@ func (d *DiffView) buildUnifiedRows(h Hunk) []widget.TextGridRow {
 
 // buildSplitRows outputs rows in side-by-side layout.
 func (d *DiffView) buildSplitRows(h Hunk) []widget.TextGridRow {
-	// Determine left half width: max content length of old-side lines across
-	// this hunk (so the separator aligns).
+	tokens := d.tokenizeHunk(h)
+
 	maxL := 0
 	for _, l := range h.Lines {
 		if l.Type == LineAdd {
@@ -233,99 +224,180 @@ func (d *DiffView) buildSplitRows(h Hunk) []widget.TextGridRow {
 	}
 
 	var rows []widget.TextGridRow
-	pairs := pairForSplit(h.Lines)
+	pairs := PairHunkLines(h.Lines)
 	for _, p := range pairs {
 		var leftCells, rightCells []widget.TextGridCell
 		switch {
-		case p.Context != nil:
-			ctx := p.Context
-			leftCells = d.halfCells(ctx.OldLineNo, nil, color.Transparent, ctx.Text, nil, nil, maxL)
-			rightCells = d.halfCells(ctx.NewLineNo, nil, color.Transparent, ctx.Text, nil, nil, 0)
-		case p.Remove != nil && p.Add != nil:
-			ls, rs := PairWordDiff(p.Remove.Text, p.Add.Text)
-			leftCells = d.halfCells(p.Remove.OldLineNo,
-				&bgSpec{line: ColorDel, stripe: ColorDelStripe, emph: ColorDelEmph},
-				color.Transparent, p.Remove.Text, ls, nil, maxL)
-			rightCells = d.halfCells(p.Add.NewLineNo,
-				&bgSpec{line: ColorAdd, stripe: ColorAddStripe, emph: ColorAddEmph},
-				color.Transparent, p.Add.Text, rs, nil, 0)
-		case p.Remove != nil:
-			leftCells = d.halfCells(p.Remove.OldLineNo,
-				&bgSpec{line: ColorDel, stripe: ColorDelStripe, emph: ColorDelEmph},
-				color.Transparent, p.Remove.Text, nil, nil, maxL)
-			rightCells = d.halfCells(0, nil, color.Transparent, "", nil, nil, 0)
-		case p.Add != nil:
-			leftCells = d.halfCells(0, nil, color.Transparent, "", nil, nil, maxL)
-			rightCells = d.halfCells(p.Add.NewLineNo,
-				&bgSpec{line: ColorAdd, stripe: ColorAddStripe, emph: ColorAddEmph},
-				color.Transparent, p.Add.Text, nil, nil, 0)
+		case p.ContextIdx >= 0:
+			ctx := h.Lines[p.ContextIdx]
+			leftCells = d.halfCells(ctx.OldLineNo, ctxBGSpec, ctx.Text, tokens[p.ContextIdx], nil, maxL)
+			rightCells = d.halfCells(ctx.NewLineNo, ctxBGSpec, ctx.Text, tokens[p.ContextIdx], nil, 0)
+		case p.RemoveIdx >= 0 && p.AddIdx >= 0:
+			rem := h.Lines[p.RemoveIdx]
+			add := h.Lines[p.AddIdx]
+			ls, rs := PairWordDiff(rem.Text, add.Text)
+			leftCells = d.halfCells(rem.OldLineNo, delBGSpec, rem.Text, tokens[p.RemoveIdx], ls, maxL)
+			rightCells = d.halfCells(add.NewLineNo, addBGSpec, add.Text, tokens[p.AddIdx], rs, 0)
+		case p.RemoveIdx >= 0:
+			rem := h.Lines[p.RemoveIdx]
+			leftCells = d.halfCells(rem.OldLineNo, delBGSpec, rem.Text, tokens[p.RemoveIdx], nil, maxL)
+			rightCells = d.halfCells(0, ctxBGSpec, "", nil, nil, 0)
+		case p.AddIdx >= 0:
+			add := h.Lines[p.AddIdx]
+			leftCells = d.halfCells(0, ctxBGSpec, "", nil, nil, maxL)
+			rightCells = d.halfCells(add.NewLineNo, addBGSpec, add.Text, tokens[p.AddIdx], nil, 0)
 		default:
 			continue
 		}
-		sep := widget.TextGridCell{Rune: '│', Style: &widget.CustomTextGridStyle{FGColor: color.NRGBA{R: 0x3c, G: 0x3c, B: 0x3c, A: 0xff}}}
 		cells := make([]widget.TextGridCell, 0, len(leftCells)+1+len(rightCells))
 		cells = append(cells, leftCells...)
-		cells = append(cells, sep)
+		cells = append(cells, splitSepCell)
 		cells = append(cells, rightCells...)
 		rows = append(rows, widget.TextGridRow{Cells: cells})
 	}
 	return rows
 }
 
-// pairForSplit walks a hunk and pairs remove/add runs for split display.
-func pairForSplit(lines []DiffLine) []LinePair {
-	return PairHunkLines(lines)
+// tokenizeHunk batch-runs chroma across a hunk's old and new content once each.
+// For huge diffs (d.skipHL), returns empty tokens so callers fall back to plain.
+func (d *DiffView) tokenizeHunk(h Hunk) [][]Token {
+	out := make([][]Token, len(h.Lines))
+	if d.skipHL {
+		return out
+	}
+	oldIdx := make([]int, len(h.Lines))
+	newIdx := make([]int, len(h.Lines))
+	for i := range oldIdx {
+		oldIdx[i] = -1
+		newIdx[i] = -1
+	}
+	var oldLines, newLines []string
+	for i, l := range h.Lines {
+		switch l.Type {
+		case LineContext:
+			oldIdx[i] = len(oldLines)
+			newIdx[i] = len(newLines)
+			oldLines = append(oldLines, l.Text)
+			newLines = append(newLines, l.Text)
+		case LineRemove:
+			oldIdx[i] = len(oldLines)
+			oldLines = append(oldLines, l.Text)
+		case LineAdd:
+			newIdx[i] = len(newLines)
+			newLines = append(newLines, l.Text)
+		}
+	}
+	oldTokens := Highlight(d.filename, strings.Join(oldLines, "\n"))
+	newTokens := Highlight(d.filename, strings.Join(newLines, "\n"))
+
+	for i, l := range h.Lines {
+		switch l.Type {
+		case LineContext, LineRemove:
+			if oldIdx[i] >= 0 && oldIdx[i] < len(oldTokens) {
+				out[i] = oldTokens[oldIdx[i]]
+			}
+		case LineAdd:
+			if newIdx[i] >= 0 && newIdx[i] < len(newTokens) {
+				out[i] = newTokens[newIdx[i]]
+			}
+		}
+	}
+	return out
 }
 
 // ----- cell builders ------------------------------------------------------
 
 type bgSpec struct {
-	line   color.Color // full-line bg (subtle)
-	stripe color.Color // left-edge stripe bg
-	emph   color.Color // word-diff emphasis bg
+	line         color.Color
+	stripeStyle  *widget.CustomTextGridStyle
+	emph         color.Color
+	rowStyle     widget.TextGridStyle
+}
+
+var (
+	ctxBGSpec = &bgSpec{line: nil, stripeStyle: stripeTransStyle, emph: nil, rowStyle: nil}
+	addBGSpec = &bgSpec{line: ColorAdd, stripeStyle: stripeAddStyle, emph: ColorAddEmph, rowStyle: &widget.CustomTextGridStyle{BGColor: ColorAdd}}
+	delBGSpec = &bgSpec{line: ColorDel, stripeStyle: stripeDelStyle, emph: ColorDelEmph, rowStyle: &widget.CustomTextGridStyle{BGColor: ColorDel}}
+)
+
+// Shared style pointers (avoid per-cell allocation).
+var (
+	gutterStyle      = &widget.CustomTextGridStyle{FGColor: ColorGutterFG, BGColor: ColorGutterBG}
+	stripeAddStyle   = &widget.CustomTextGridStyle{BGColor: ColorAddStripe}
+	stripeDelStyle   = &widget.CustomTextGridStyle{BGColor: ColorDelStripe}
+	stripeTransStyle = &widget.CustomTextGridStyle{BGColor: color.Transparent}
+
+	fileHeaderStyle    = &widget.CustomTextGridStyle{FGColor: color.NRGBA{R: 0x9c, G: 0xdc, B: 0xfe, A: 0xff}, BGColor: ColorHeader, TextStyle: fyne.TextStyle{Bold: true, Monospace: true}}
+	fileHeaderRowStyle = &widget.CustomTextGridStyle{BGColor: ColorHeader}
+	hunkHeaderStyle    = &widget.CustomTextGridStyle{FGColor: color.NRGBA{R: 0xc5, G: 0xa3, B: 0xff, A: 0xff}, BGColor: ColorHunk}
+	hunkHeaderRowStyle = &widget.CustomTextGridStyle{BGColor: ColorHunk}
+
+	splitSepCell = widget.TextGridCell{Rune: '│', Style: &widget.CustomTextGridStyle{FGColor: color.NRGBA{R: 0x3c, G: 0x3c, B: 0x3c, A: 0xff}}}
+
+	// Per-fgcolor style caches — populated on demand.
+	plainStyleCache    = map[fgColorKey]*widget.CustomTextGridStyle{}
+	emphAddStyleCache  = map[fgColorKey]*widget.CustomTextGridStyle{}
+	emphDelStyleCache  = map[fgColorKey]*widget.CustomTextGridStyle{}
+	emphCtxStyleCache  = map[fgColorKey]*widget.CustomTextGridStyle{}
+)
+
+type fgColorKey struct {
+	R, G, B, A uint8
+}
+
+func fgKey(c color.Color) fgColorKey {
+	if n, ok := c.(color.NRGBA); ok {
+		return fgColorKey{n.R, n.G, n.B, n.A}
+	}
+	r, g, b, a := c.RGBA()
+	return fgColorKey{uint8(r >> 8), uint8(g >> 8), uint8(b >> 8), uint8(a >> 8)}
+}
+
+func plainStyle(fg color.Color) *widget.CustomTextGridStyle {
+	k := fgKey(fg)
+	s, ok := plainStyleCache[k]
+	if !ok {
+		s = &widget.CustomTextGridStyle{FGColor: fg}
+		plainStyleCache[k] = s
+	}
+	return s
+}
+
+func emphStyle(fg color.Color, emphBG color.Color) *widget.CustomTextGridStyle {
+	k := fgKey(fg)
+	var cache map[fgColorKey]*widget.CustomTextGridStyle
+	switch emphBG {
+	case ColorAddEmph:
+		cache = emphAddStyleCache
+	case ColorDelEmph:
+		cache = emphDelStyleCache
+	default:
+		cache = emphCtxStyleCache
+	}
+	s, ok := cache[k]
+	if !ok {
+		s = &widget.CustomTextGridStyle{FGColor: fg, BGColor: emphBG}
+		cache[k] = s
+	}
+	return s
 }
 
 // unifiedContentRow builds a unified-view content row.
-// bg==nil means "context" (no bg, transparent stripe).
-func (d *DiffView) unifiedContentRow(oldNo, newNo int, bg *bgSpec, _ color.Color, text string, segs []Segment, _ *struct{}) widget.TextGridRow {
-	var stripeBG, lineBG, emphBG color.Color
-	if bg != nil {
-		stripeBG = bg.stripe
-		lineBG = bg.line
-		emphBG = bg.emph
-	} else {
-		stripeBG = color.Transparent
-		lineBG = color.Transparent
-		emphBG = color.Transparent
-	}
-
+func (d *DiffView) unifiedContentRow(oldNo, newNo int, bg *bgSpec, text string, tokens []Token, segs []Segment) widget.TextGridRow {
 	cells := make([]widget.TextGridCell, 0, 16+len(text))
-	cells = append(cells, stripeCell(stripeBG))
+	cells = append(cells, widget.TextGridCell{Rune: ' ', Style: bg.stripeStyle})
 	cells = append(cells, gutterCells(padLeft(numOrBlank(oldNo), gutterNumW)+" "+padLeft(numOrBlank(newNo), gutterNumW)+" ")...)
-	cells = append(cells, contentCells(d.filename, text, segs, emphBG)...)
+	cells = append(cells, contentCells(d, text, tokens, segs, bg.emph)...)
 
-	return widget.TextGridRow{
-		Cells: cells,
-		Style: rowBGStyle(lineBG),
-	}
+	return widget.TextGridRow{Cells: cells, Style: bg.rowStyle}
 }
 
-// halfCells produces one half (left or right) of a split-view row.
-// padTo: if > 0, right-pad the content cells with spaces so the column aligns.
-func (d *DiffView) halfCells(lineNo int, bg *bgSpec, _ color.Color, text string, segs []Segment, _ *struct{}, padTo int) []widget.TextGridCell {
-	var stripeBG, emphBG color.Color
-	if bg != nil {
-		stripeBG = bg.stripe
-		emphBG = bg.emph
-	} else {
-		stripeBG = color.Transparent
-		emphBG = color.Transparent
-	}
-
+// halfCells produces one half of a split-view row.
+func (d *DiffView) halfCells(lineNo int, bg *bgSpec, text string, tokens []Token, segs []Segment, padTo int) []widget.TextGridCell {
 	cells := make([]widget.TextGridCell, 0, 8+len(text))
-	cells = append(cells, stripeCell(stripeBG))
+	cells = append(cells, widget.TextGridCell{Rune: ' ', Style: bg.stripeStyle})
 	cells = append(cells, gutterCells(padLeft(numOrBlank(lineNo), gutterNumW)+" ")...)
-	content := contentCells(d.filename, text, segs, emphBG)
+	content := contentCells(d, text, tokens, segs, bg.emph)
 	cells = append(cells, content...)
 	if padTo > 0 {
 		runeCount := utf8.RuneCountInString(text)
@@ -336,32 +408,32 @@ func (d *DiffView) halfCells(lineNo int, bg *bgSpec, _ color.Color, text string,
 	return cells
 }
 
-func stripeCell(bg color.Color) widget.TextGridCell {
-	return widget.TextGridCell{Rune: ' ', Style: &widget.CustomTextGridStyle{BGColor: bg}}
-}
-
 func gutterCells(text string) []widget.TextGridCell {
-	st := &widget.CustomTextGridStyle{FGColor: ColorGutterFG, BGColor: ColorGutterBG}
 	cells := make([]widget.TextGridCell, 0, len(text))
 	for _, r := range text {
-		cells = append(cells, widget.TextGridCell{Rune: r, Style: st})
+		cells = append(cells, widget.TextGridCell{Rune: r, Style: gutterStyle})
 	}
 	return cells
 }
 
 // contentCells renders the text portion with syntax highlighting and optional
 // word-diff emphasis via per-cell background.
-func contentCells(filename, text string, segs []Segment, emphBG color.Color) []widget.TextGridCell {
+func contentCells(d *DiffView, text string, tokens []Token, segs []Segment, emphBG color.Color) []widget.TextGridCell {
 	if text == "" {
 		return nil
 	}
-	lineToks := Highlight(filename, text)
-	var tokens []Token
-	if len(lineToks) > 0 {
-		tokens = lineToks[0]
-	}
-	if len(tokens) == 0 || tokensLen(tokens) != len(text) {
+	// Skip syntax highlighting for huge diffs.
+	if d.skipHL {
 		tokens = []Token{{Text: text, Color: ColorDefaultFG}}
+	} else if len(tokens) == 0 || tokensLen(tokens) != len(text) {
+		lineToks := Highlight(d.filename, text)
+		tokens = nil
+		if len(lineToks) > 0 {
+			tokens = lineToks[0]
+		}
+		if len(tokens) == 0 || tokensLen(tokens) != len(text) {
+			tokens = []Token{{Text: text, Color: ColorDefaultFG}}
+		}
 	}
 	mask := emphasisByteMask(segs, len(text))
 
@@ -372,14 +444,19 @@ func contentCells(filename, text string, segs []Segment, emphBG color.Color) []w
 			continue
 		}
 		end := pos + len(tok.Text)
+		pStyle := plainStyle(tok.Color)
+		var eStyle *widget.CustomTextGridStyle
+		if emphBG != nil {
+			eStyle = emphStyle(tok.Color, emphBG)
+		}
 		for i := pos; i < end; {
 			r, size := utf8.DecodeRuneInString(text[i:])
 			em := i < len(mask) && mask[i]
 			var st *widget.CustomTextGridStyle
-			if em {
-				st = &widget.CustomTextGridStyle{FGColor: tok.Color, BGColor: emphBG}
+			if em && eStyle != nil {
+				st = eStyle
 			} else {
-				st = &widget.CustomTextGridStyle{FGColor: tok.Color}
+				st = pStyle
 			}
 			cells = append(cells, widget.TextGridCell{Rune: r, Style: st})
 			i += size
@@ -406,19 +483,6 @@ func emphasisByteMask(segs []Segment, n int) []bool {
 		pos += len(s.Text)
 	}
 	return mask
-}
-
-func rowBGStyle(c color.Color) widget.TextGridStyle {
-	if c == nil {
-		return nil
-	}
-	if _, ok := c.(color.Alpha); ok {
-		return nil
-	}
-	if t, ok := c.(color.NRGBA); ok && t.A == 0 {
-		return nil
-	}
-	return &widget.CustomTextGridStyle{BGColor: c}
 }
 
 func plainRow(text string, fg color.Color, bg color.Color) widget.TextGridRow {
@@ -458,7 +522,6 @@ func tokensLen(toks []Token) int {
 	return n
 }
 
-func unifiedGutterChars() int { return 1 + gutterNumW + 1 + gutterNumW + 1 } // stripe + old + sp + new + sp
+func unifiedGutterChars() int { return 1 + gutterNumW + 1 + gutterNumW + 1 }
 
-// avoid unused import warnings
 var _ = fmt.Sprintf

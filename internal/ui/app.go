@@ -20,16 +20,26 @@ type App struct {
 	win     fyne.Window
 	repo    *git.Repo
 
-	fileList    *FileList
-	diffView    *DiffView
-	commitMsg   *widget.Entry
-	commitBtn   *widget.Button
-	branchLbl   *canvas.Text
-	statusText  *widget.Label
-	modeBtn     *widget.Button
+	fileList   *FileList
+	diffView   *DiffView
+	commitMsg  *widget.Entry
+	commitBtn  *widget.Button
+	branchLbl  *canvas.Text
+	statusText *widget.Label
+	modeBtn    *widget.Button
 
 	currentPath   string
 	currentStaged bool
+
+	// diffCache holds raw diff output keyed by (path, staged, untracked).
+	// Invalidated on every refresh (stage/unstage/commit/discard).
+	diffCache map[diffCacheKey]string
+}
+
+type diffCacheKey struct {
+	path      string
+	staged    bool
+	untracked bool
 }
 
 func Run(repo *git.Repo) error {
@@ -40,9 +50,10 @@ func Run(repo *git.Repo) error {
 	w.Resize(fyne.NewSize(1100, 720))
 
 	ap := &App{
-		fyneApp: a,
-		win:     w,
-		repo:    repo,
+		fyneApp:   a,
+		win:       w,
+		repo:      repo,
+		diffCache: map[diffCacheKey]string{},
 	}
 	ap.build()
 	ap.refresh()
@@ -54,9 +65,8 @@ func Run(repo *git.Repo) error {
 
 func (a *App) build() {
 	a.fileList = NewFileList()
-	a.fileList.OnSelect = func(path string, staged bool) {
-		a.showDiff(path, staged)
-		a.fileList.SetFiles(a.currentFiles())
+	a.fileList.OnSelect = func(f git.FileStatus, staged bool) {
+		a.showDiff(f, staged)
 	}
 	a.fileList.OnStage = func(p string) { a.do(func() error { return a.repo.Stage(p) }) }
 	a.fileList.OnUnstage = func(p string) { a.do(func() error { return a.repo.Unstage(p) }) }
@@ -150,6 +160,8 @@ func (a *App) currentFiles() []git.FileStatus {
 }
 
 func (a *App) refresh() {
+	// Any state-changing op (stage/unstage/commit/discard) invalidates cached diffs.
+	a.diffCache = map[diffCacheKey]string{}
 	files := a.currentFiles()
 	a.fileList.SetFiles(files)
 	a.branchLbl.Text = "● " + a.repo.Branch()
@@ -160,36 +172,42 @@ func (a *App) refresh() {
 	if sel == "" {
 		a.diffView.SetEmpty("ファイルを選択してね")
 	} else {
-		a.showDiff(sel, staged)
+		for _, f := range files {
+			if f.Path == sel {
+				a.showDiff(f, staged)
+				a.statusText.SetText("")
+				return
+			}
+		}
+		a.diffView.SetEmpty("ファイルを選択してね")
 	}
 	a.statusText.SetText("")
 }
 
-func (a *App) showDiff(path string, staged bool) {
-	a.currentPath = path
-	a.currentStaged = staged
-
-	var diff string
-	var err error
-	// detect untracked to use --no-index
-	files := a.currentFiles()
-	isUntracked := false
-	for _, f := range files {
-		if f.Path == path && f.Untracked {
-			isUntracked = true
-			break
-		}
-	}
-	if isUntracked {
-		diff, err = a.repo.DiffUntracked(path)
-	} else {
-		diff, err = a.repo.Diff(path, staged)
-	}
-	if err != nil {
-		a.diffView.SetEmpty("diff取得エラー: " + err.Error())
+func (a *App) showDiff(f git.FileStatus, staged bool) {
+	// Same file + same mode? Nothing to do.
+	if a.currentPath == f.Path && a.currentStaged == staged {
 		return
 	}
-	a.diffView.SetDiff(diff, path)
+	a.currentPath = f.Path
+	a.currentStaged = staged
+
+	key := diffCacheKey{path: f.Path, staged: staged, untracked: f.Untracked}
+	diff, hit := a.diffCache[key]
+	if !hit {
+		var err error
+		if f.Untracked {
+			diff, err = a.repo.DiffUntracked(f.Path)
+		} else {
+			diff, err = a.repo.Diff(f.Path, staged)
+		}
+		if err != nil {
+			a.diffView.SetEmpty("diff取得エラー: " + err.Error())
+			return
+		}
+		a.diffCache[key] = diff
+	}
+	a.diffView.SetDiff(diff, f.Path)
 }
 
 func (a *App) toggleMode() {

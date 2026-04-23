@@ -19,7 +19,7 @@ type FileList struct {
 	body   *fyne.Container
 	scroll *container.Scroll
 
-	OnSelect   func(path string, staged bool)
+	OnSelect   func(f git.FileStatus, staged bool)
 	OnStage    func(path string)
 	OnUnstage  func(path string)
 	OnDiscard  func(path string, untracked bool)
@@ -28,10 +28,24 @@ type FileList struct {
 
 	selectedPath   string
 	selectedStaged bool
+
+	// Per-row selection-bg refs keyed by (path, staged) so we can update
+	// highlight in-place without rebuilding the whole list.
+	rowBG map[rowKey]*canvas.Rectangle
 }
 
+type rowKey struct {
+	path   string
+	staged bool
+}
+
+var (
+	selectedBG = color.NRGBA{R: 0x09, G: 0x4f, B: 0x82, A: 0xff}
+	clearBG    = color.Transparent
+)
+
 func NewFileList() *FileList {
-	fl := &FileList{body: container.NewVBox()}
+	fl := &FileList{body: container.NewVBox(), rowBG: map[rowKey]*canvas.Rectangle{}}
 	fl.scroll = container.NewScroll(fl.body)
 	fl.ExtendBaseWidget(fl)
 	return fl
@@ -47,6 +61,7 @@ func (fl *FileList) Selected() (string, bool) {
 
 func (fl *FileList) SetFiles(files []git.FileStatus) {
 	fl.body.RemoveAll()
+	fl.rowBG = map[rowKey]*canvas.Rectangle{}
 
 	var staged, unstaged []git.FileStatus
 	for _, f := range files {
@@ -99,6 +114,23 @@ func (fl *FileList) SetFiles(files []git.FileStatus) {
 	}
 
 	fl.body.Refresh()
+}
+
+// selectRow updates the selection highlight in place without rebuilding rows.
+func (fl *FileList) selectRow(path string, staged bool) {
+	if fl.selectedPath == path && fl.selectedStaged == staged {
+		return
+	}
+	if r, ok := fl.rowBG[rowKey{fl.selectedPath, fl.selectedStaged}]; ok {
+		r.FillColor = clearBG
+		r.Refresh()
+	}
+	fl.selectedPath = path
+	fl.selectedStaged = staged
+	if r, ok := fl.rowBG[rowKey{path, staged}]; ok {
+		r.FillColor = selectedBG
+		r.Refresh()
+	}
 }
 
 func (fl *FileList) sectionHeader(title, tooltip string, icon fyne.Resource, onTap func(), enabled bool) fyne.CanvasObject {
@@ -183,20 +215,20 @@ func (fl *FileList) fileRow(f git.FileStatus, staged bool) fyne.CanvasObject {
 		right,
 	)
 
-	selected := fl.selectedPath == f.Path && fl.selectedStaged == staged
-	var bgCol color.Color = color.Transparent
-	if selected {
-		bgCol = color.NRGBA{R: 0x09, G: 0x4f, B: 0x82, A: 0xff}
+	var bgCol color.Color = clearBG
+	if fl.selectedPath == f.Path && fl.selectedStaged == staged {
+		bgCol = selectedBG
 	}
 	bg := canvas.NewRectangle(bgCol)
+	fl.rowBG[rowKey{f.Path, staged}] = bg
 
+	fCopy := f
 	row := &clickableRow{
 		content: container.NewStack(bg, content),
 		onTap: func() {
-			fl.selectedPath = f.Path
-			fl.selectedStaged = staged
+			fl.selectRow(fCopy.Path, staged)
 			if fl.OnSelect != nil {
-				fl.OnSelect(f.Path, staged)
+				fl.OnSelect(fCopy, staged)
 			}
 		},
 	}

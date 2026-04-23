@@ -9,6 +9,10 @@ import (
 )
 
 func main() {
+	// Before any Fyne theme init: if the user has a CJK-capable monospace font
+	// installed, point Fyne at it so Japanese renders correctly.
+	ui.DetectAndSetMonoFont()
+
 	dir := "."
 	if len(os.Args) > 1 {
 		dir = os.Args[1]
