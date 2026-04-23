@@ -251,6 +251,26 @@ func (r *Repo) HEADSha() (string, error) {
 	return strings.TrimSpace(string(out)), nil
 }
 
+// RemoteBranchesContaining returns the list of remote-tracking branches that
+// contain the given commit. An empty result means the commit exists only
+// locally — safe to rewrite. Lines like "origin/HEAD -> origin/main" are
+// skipped since they're aliases, not real branches.
+func (r *Repo) RemoteBranchesContaining(sha string) ([]string, error) {
+	out, err := r.run("branch", "-r", "--contains", sha)
+	if err != nil {
+		return nil, err
+	}
+	var branches []string
+	for _, line := range strings.Split(string(out), "\n") {
+		b := strings.TrimSpace(line)
+		if b == "" || strings.Contains(b, "->") {
+			continue
+		}
+		branches = append(branches, b)
+	}
+	return branches, nil
+}
+
 // ResetSoft moves HEAD to the given SHA without touching the index or working
 // tree. If sha is empty, HEAD is detached (used to undo the initial commit).
 func (r *Repo) ResetSoft(sha string) error {

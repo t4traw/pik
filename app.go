@@ -324,7 +324,23 @@ func (a *App) Commit(msg string) error {
 	}
 	a.push(undoOp{
 		Desc: "コミット: " + msg,
-		Undo: func() error { return a.repo.ResetSoft(prev) },
+		Undo: func() error {
+			// Refuse to rewind past a commit that's already on a remote —
+			// undoing it locally would diverge from origin and require a
+			// force-push to reconcile.
+			cur, err := a.repo.HEADSha()
+			if err != nil {
+				return err
+			}
+			remotes, err := a.repo.RemoteBranchesContaining(cur)
+			if err != nil {
+				return err
+			}
+			if len(remotes) > 0 {
+				return fmt.Errorf("push 済みのため取り消せません (%s)", strings.Join(remotes, ", "))
+			}
+			return a.repo.ResetSoft(prev)
+		},
 		Redo: func() error { return a.repo.Commit(msg) },
 	})
 	return nil
