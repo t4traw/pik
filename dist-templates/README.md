@@ -28,31 +28,40 @@ brew install pik
 
 これで `pik` コマンドが PATH に入り、GUI アプリ本体は `$(brew --prefix)/opt/pik/pik.app` に配置される。
 
-## 2. リリースを作るとき
+## 2. PAT を一度だけ設定 (Homebrew tap 自動更新用)
 
-### 本番リリース (推奨: GitHub Actions)
+1. GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic)
+   → **Generate new token (classic)**
+2. Scope は `repo` だけでOK。Expiration は長めに (1 year など)
+3. 発行されたトークンをコピー
+4. `t4traw/pik` リポの Settings → Secrets and variables → Actions →
+   **New repository secret**
+   - Name: `TAP_GITHUB_TOKEN`
+   - Value: コピーしたトークン
 
-1. タグを切って push
+これで Actions から `t4traw/homebrew-pik` に push できるようになる。
 
-   ```sh
-   git tag v0.1.0
-   git push origin v0.1.0
-   ```
+## 3. リリース手順 (これだけ!)
 
-2. `.github/workflows/release.yml` が自動で:
-   - macOS runner で universal `.app` をビルド
-   - `dist/pik-v0.1.0-darwin-universal.tar.gz` を作る
-   - GitHub Release を作成、tarball を添付
-   - SHA-256 を release notes に書き込む
+```sh
+git tag v0.1.0
+git push origin v0.1.0
+```
 
-3. Release notes に出た SHA-256 をコピー
+あとは自動で:
 
-4. **`t4traw/homebrew-pik` リポの `Formula/pik.rb`** を編集:
-   - `version` を `"0.1.0"` に
-   - `sha256` を先ほどのハッシュに差し替え
-   - commit & push
+1. macOS runner で universal `.app` をビルド
+2. `dist/pik-v0.1.0-darwin-universal.tar.gz` を作る
+3. GitHub Release を作成、tarball を添付
+4. SHA-256 を計算して release notes に書き込む
+5. **`t4traw/homebrew-pik` の `Formula/pik.rb` を自動更新 & commit & push**
 
-5. ユーザーは `brew upgrade pik` で新版取得
+完了後、ユーザーは:
+
+```sh
+brew install t4traw/pik/pik     # 初回
+brew upgrade pik                # 2回目以降
+```
 
 ### ローカルで検証ビルドする場合
 
@@ -60,42 +69,6 @@ brew install pik
 make release-build   # universal .app 作成
 make release-tar     # dist/pik-<version>-darwin-universal.tar.gz + SHA表示
 ```
-
-## 3. Homebrew tap の自動更新 (optional)
-
-`t4traw/homebrew-pik` 側に action を置いておくと、pik の release を watch して自動で formula を更新できる。
-
-```yaml
-# .github/workflows/bump.yml (in homebrew-pik repo)
-name: bump-on-release
-on:
-  repository_dispatch:
-    types: [pik-release]
-  workflow_dispatch:
-    inputs:
-      version:
-        required: true
-      sha256:
-        required: true
-
-jobs:
-  bump:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Update formula
-        run: |
-          V="${{ inputs.version }}"
-          SHA="${{ inputs.sha256 }}"
-          sed -i "s/version \".*\"/version \"${V#v}\"/" Formula/pik.rb
-          sed -i "s/sha256 \".*\"/sha256 \"$SHA\"/" Formula/pik.rb
-      - uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: "pik ${{ inputs.version }}"
-```
-
-そして pik リポ側の `release.yml` で `repository_dispatch` を飛ばすステップを足せば
-完全自動化。
 
 ## 4. コード署名について
 
