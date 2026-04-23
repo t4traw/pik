@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.2](https://github.com/t4traw/pik/compare/v0.1.1...v0.1.2) (2026-04-23)
+
+
+### Bug Fixes
+
+* ターミナルから起動したら自動で detach する ([adfd02e](https://github.com/t4traw/pik/commit/adfd02edafe6b4e990d7d5bbcff750ac9e775380))
+
 ## [0.1.1](https://github.com/t4traw/pik/compare/v0.1.0...v0.1.1) (2026-04-23)
 
 
