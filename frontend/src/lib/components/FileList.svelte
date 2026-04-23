@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { FileStatus } from '../types'
   import { appStore } from '../stores/app.svelte'
+  import Icon from './Icon.svelte'
 
   let dragOverTarget = $state<'staged' | 'changes' | null>(null)
 
@@ -13,7 +14,7 @@
       case 'R': return { char: 'R', color: 'text-sky-300' }
       case 'C': return { char: 'C', color: 'text-sky-300' }
       case '?': return { char: 'U', color: 'text-emerald-400' }
-      default: return { char: String.fromCharCode(code) || '·', color: 'text-fg-dim' }
+      default: return { char: String.fromCharCode(code) || '·', color: 'text-[var(--color-fg-dim)]' }
     }
   }
 
@@ -63,37 +64,41 @@
 </script>
 
 <div class="flex flex-col h-full bg-[var(--color-bg-soft)] overflow-hidden text-[13px]">
-  <!-- STAGED -->
+  <!-- STAGED header + drop zone -->
   <div
-    class="flex items-center justify-between px-3 py-1.5 bg-[var(--color-bg-softer)] border-b border-[var(--color-border)] {dragOverTarget === 'staged' ? 'ring-2 ring-inset ring-[var(--color-accent)]' : ''}"
+    role="group"
     ondragover={(e) => onDragOver(e, 'staged')}
     ondragleave={onDragLeave}
     ondrop={(e) => onDrop(e, 'staged')}
-    role="group"
+    class="flex items-center justify-between px-3 h-8 bg-[var(--color-bg-softer)] border-b border-[var(--color-border)] {dragOverTarget === 'staged' ? 'ring-2 ring-inset ring-[var(--color-accent)]' : ''}"
   >
-    <span class="text-[11px] font-semibold tracking-wide text-fg-muted">
+    <span class="text-[11px] font-semibold tracking-wider text-[var(--color-fg-muted)]">
       STAGED CHANGES ({appStore.stagedFiles.length})
     </span>
     {#if appStore.stagedFiles.length > 0}
       <button
         type="button"
-        class="text-fg-muted hover:text-fg cursor-pointer"
-        title="すべてアンステージ"
-        onclick={() => appStore.unstageAll()}>↶ all</button>
+        aria-label="すべてアンステージ"
+        class="flex items-center gap-1 h-6 px-2 rounded text-[11px] text-[var(--color-fg-muted)] hover:text-white hover:bg-[var(--color-bg)] transition-colors"
+        onclick={() => appStore.unstageAll()}>
+        <Icon name="undo" size={13} />
+        <span>all</span>
+      </button>
     {/if}
   </div>
+
   <div
-    class="overflow-y-auto {dragOverTarget === 'staged' ? 'bg-[var(--color-selected)]/10' : ''}"
+    role="list"
     ondragover={(e) => onDragOver(e, 'staged')}
     ondragleave={onDragLeave}
     ondrop={(e) => onDrop(e, 'staged')}
-    role="list"
+    class="overflow-y-auto {dragOverTarget === 'staged' ? 'bg-[var(--color-selected)]/10' : ''}"
   >
     {#each appStore.stagedFiles as f (f.Path)}
       {@const b = badgeFor(f, true)}
       {@const selected = appStore.selectedPath === f.Path && appStore.selectedStaged}
       <div
-        class="group flex items-center px-2 py-1 cursor-pointer hover:bg-[var(--color-bg-softer)] {selected ? 'bg-[var(--color-selected)]' : ''}"
+        class="group flex items-center pl-2 pr-1 h-7 cursor-pointer hover:bg-[var(--color-bg-softer)] {selected ? 'bg-[var(--color-selected)]' : ''}"
         draggable="true"
         ondragstart={(e) => onDragStart(e, f.Path, true)}
         role="listitem"
@@ -101,49 +106,54 @@
         onkeydown={(e) => e.key === 'Enter' && appStore.selectFile(f, true)}
         tabindex="0"
       >
-        <span class="w-4 font-mono font-bold text-center {b.color}">{b.char}</span>
-        <span class="ml-2 truncate flex-1">{basename(f.Path)}</span>
-        <span class="ml-2 text-[11px] text-fg-dim truncate">{dirname(f.Path)}</span>
+        <span class="w-4 font-mono font-bold text-center text-[12px] {b.color}">{b.char}</span>
+        <span class="ml-2 truncate flex-1 text-[var(--color-fg)]">{basename(f.Path)}</span>
+        <span class="ml-2 text-[11px] text-[var(--color-fg-dim)] truncate max-w-[40%]">{dirname(f.Path)}</span>
         <button
           type="button"
-          class="ml-2 opacity-0 group-hover:opacity-100 hover:text-fg text-fg-muted"
-          title="アンステージ"
-          onclick={(e) => { e.stopPropagation(); appStore.unstage(f.Path) }}>↶</button>
+          aria-label="アンステージ"
+          class="ml-1 w-6 h-6 flex items-center justify-center rounded opacity-0 group-hover:opacity-100 text-[var(--color-fg-muted)] hover:text-white hover:bg-[var(--color-bg)]"
+          onclick={(e) => { e.stopPropagation(); appStore.unstage(f.Path) }}>
+          <Icon name="undo" size={14} />
+        </button>
       </div>
     {/each}
   </div>
 
-  <!-- CHANGES -->
+  <!-- CHANGES header + drop zone -->
   <div
-    class="flex items-center justify-between px-3 py-1.5 bg-[var(--color-bg-softer)] border-b border-t border-[var(--color-border)] {dragOverTarget === 'changes' ? 'ring-2 ring-inset ring-[var(--color-accent)]' : ''}"
+    role="group"
     ondragover={(e) => onDragOver(e, 'changes')}
     ondragleave={onDragLeave}
     ondrop={(e) => onDrop(e, 'changes')}
-    role="group"
+    class="flex items-center justify-between px-3 h-8 bg-[var(--color-bg-softer)] border-b border-t border-[var(--color-border)] {dragOverTarget === 'changes' ? 'ring-2 ring-inset ring-[var(--color-accent)]' : ''}"
   >
-    <span class="text-[11px] font-semibold tracking-wide text-fg-muted">
+    <span class="text-[11px] font-semibold tracking-wider text-[var(--color-fg-muted)]">
       CHANGES ({appStore.unstagedFiles.length})
     </span>
     {#if appStore.unstagedFiles.length > 0}
       <button
         type="button"
-        class="text-fg-muted hover:text-fg cursor-pointer"
-        title="すべてステージ"
-        onclick={() => appStore.stageAll()}>+ all</button>
+        aria-label="すべてステージ"
+        class="flex items-center gap-1 h-6 px-2 rounded text-[11px] text-[var(--color-fg-muted)] hover:text-white hover:bg-[var(--color-bg)] transition-colors"
+        onclick={() => appStore.stageAll()}>
+        <Icon name="plus" size={13} />
+        <span>all</span>
+      </button>
     {/if}
   </div>
   <div
-    class="flex-1 overflow-y-auto {dragOverTarget === 'changes' ? 'bg-[var(--color-selected)]/10' : ''}"
+    role="list"
     ondragover={(e) => onDragOver(e, 'changes')}
     ondragleave={onDragLeave}
     ondrop={(e) => onDrop(e, 'changes')}
-    role="list"
+    class="flex-1 overflow-y-auto {dragOverTarget === 'changes' ? 'bg-[var(--color-selected)]/10' : ''}"
   >
     {#each appStore.unstagedFiles as f (f.Path)}
       {@const b = badgeFor(f, false)}
       {@const selected = appStore.selectedPath === f.Path && !appStore.selectedStaged}
       <div
-        class="group flex items-center px-2 py-1 cursor-pointer hover:bg-[var(--color-bg-softer)] {selected ? 'bg-[var(--color-selected)]' : ''}"
+        class="group flex items-center pl-2 pr-1 h-7 cursor-pointer hover:bg-[var(--color-bg-softer)] {selected ? 'bg-[var(--color-selected)]' : ''}"
         draggable="true"
         ondragstart={(e) => onDragStart(e, f.Path, false)}
         role="listitem"
@@ -151,24 +161,28 @@
         onkeydown={(e) => e.key === 'Enter' && appStore.selectFile(f, false)}
         tabindex="0"
       >
-        <span class="w-4 font-mono font-bold text-center {b.color}">{b.char}</span>
-        <span class="ml-2 truncate flex-1">{basename(f.Path)}</span>
-        <span class="ml-2 text-[11px] text-fg-dim truncate">{dirname(f.Path)}</span>
+        <span class="w-4 font-mono font-bold text-center text-[12px] {b.color}">{b.char}</span>
+        <span class="ml-2 truncate flex-1 text-[var(--color-fg)]">{basename(f.Path)}</span>
+        <span class="ml-2 text-[11px] text-[var(--color-fg-dim)] truncate max-w-[40%]">{dirname(f.Path)}</span>
         <button
           type="button"
-          class="ml-1 opacity-0 group-hover:opacity-100 hover:text-rose-400 text-fg-muted"
-          title={f.Untracked ? '削除' : '変更破棄'}
-          onclick={(e) => { e.stopPropagation(); discardFile(f) }}>{f.Untracked ? '🗑' : '↶'}</button>
+          aria-label={f.Untracked ? '削除' : '変更破棄'}
+          class="ml-1 w-6 h-6 flex items-center justify-center rounded opacity-0 group-hover:opacity-100 text-[var(--color-fg-muted)] hover:text-rose-300 hover:bg-[var(--color-bg)]"
+          onclick={(e) => { e.stopPropagation(); discardFile(f) }}>
+          <Icon name={f.Untracked ? 'trash' : 'undo'} size={14} />
+        </button>
         <button
           type="button"
-          class="ml-1 opacity-0 group-hover:opacity-100 hover:text-emerald-400 text-fg-muted"
-          title="ステージ"
-          onclick={(e) => { e.stopPropagation(); appStore.stage(f.Path) }}>+</button>
+          aria-label="ステージ"
+          class="ml-0.5 w-6 h-6 flex items-center justify-center rounded opacity-0 group-hover:opacity-100 text-[var(--color-fg-muted)] hover:text-emerald-300 hover:bg-[var(--color-bg)]"
+          onclick={(e) => { e.stopPropagation(); appStore.stage(f.Path) }}>
+          <Icon name="plus" size={14} />
+        </button>
       </div>
     {/each}
 
     {#if appStore.files.length === 0}
-      <div class="text-center text-fg-dim py-6 text-[12px]">変更なし</div>
+      <div class="text-center text-[var(--color-fg-dim)] py-6 text-[12px]">変更なし</div>
     {/if}
   </div>
 </div>
