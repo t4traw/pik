@@ -24,3 +24,6 @@ coverage.txt
 
 # Windows
 Thumbs.db
+build/bin
+node_modules
+frontend/dist

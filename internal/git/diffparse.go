@@ -1,50 +1,43 @@
-package ui
+package git
 
 import (
 	"strconv"
 	"strings"
 )
 
-type LineType int
-
-const (
-	LineContext LineType = iota
-	LineAdd
-	LineRemove
-	LineNoNewline
-)
-
+// DiffLine is a single parsed line of a unified diff.
 type DiffLine struct {
-	Type      LineType
-	Text      string // without leading +/-/space
-	OldLineNo int    // 0 means N/A
-	NewLineNo int    // 0 means N/A
+	Op        LineOp `json:"op"`        // "context" | "add" | "remove"
+	Text      string `json:"text"`
+	OldLineNo int    `json:"oldLineNo"` // 0 = N/A (add-only)
+	NewLineNo int    `json:"newLineNo"` // 0 = N/A (remove-only)
 }
 
+// Hunk is a hunk in a unified diff.
 type Hunk struct {
-	OldStart int
-	NewStart int
-	Header   string
-	Lines    []DiffLine
+	OldStart int        `json:"oldStart"`
+	NewStart int        `json:"newStart"`
+	Header   string     `json:"header"`
+	Lines    []DiffLine `json:"lines"`
 }
 
+// FileDiff is all hunks + metadata for one file in a unified diff.
 type FileDiff struct {
-	OldPath  string
-	NewPath  string
-	Preamble []string
-	Hunks    []Hunk
-	Binary   bool
+	OldPath  string   `json:"oldPath"`
+	NewPath  string   `json:"newPath"`
+	Hunks    []Hunk   `json:"hunks"`
+	Binary   bool     `json:"binary"`
+	Preamble []string `json:"preamble"`
 }
 
-// ParseUnifiedDiff parses a git diff output (possibly with multiple files)
-// into a list of FileDiff entries.
+// ParseUnifiedDiff parses unified diff text (possibly covering multiple files)
+// into a structured list of FileDiff.
 func ParseUnifiedDiff(raw string) []FileDiff {
 	var result []FileDiff
 	if strings.TrimSpace(raw) == "" {
 		return result
 	}
 	lines := strings.Split(raw, "\n")
-	// Strip trailing empty
 	if len(lines) > 0 && lines[len(lines)-1] == "" {
 		lines = lines[:len(lines)-1]
 	}
@@ -73,14 +66,12 @@ func ParseUnifiedDiff(raw string) []FileDiff {
 			flushFile()
 			cur = &FileDiff{}
 			cur.Preamble = append(cur.Preamble, ln)
-			// parse paths: diff --git a/path b/path
 			parts := strings.Fields(ln)
 			if len(parts) >= 4 {
 				cur.OldPath = strings.TrimPrefix(parts[2], "a/")
 				cur.NewPath = strings.TrimPrefix(parts[3], "b/")
 			}
 		case strings.HasPrefix(ln, "diff "):
-			// non-git diff (e.g. from --no-index)
 			flushFile()
 			cur = &FileDiff{}
 			cur.Preamble = append(cur.Preamble, ln)
@@ -102,31 +93,33 @@ func ParseUnifiedDiff(raw string) []FileDiff {
 		case cur != nil && strings.HasPrefix(ln, "@@"):
 			flushHunk()
 			oldS, newS := parseHunkHeader(ln)
-			curHunk = &Hunk{
-				OldStart: oldS,
-				NewStart: newS,
-				Header:   ln,
-			}
+			curHunk = &Hunk{OldStart: oldS, NewStart: newS, Header: ln}
 			oldLine = oldS
 			newLine = newS
 		case curHunk != nil && len(ln) > 0 && ln[0] == '+':
-			dl := DiffLine{Type: LineAdd, Text: ln[1:], NewLineNo: newLine}
-			curHunk.Lines = append(curHunk.Lines, dl)
+			curHunk.Lines = append(curHunk.Lines, DiffLine{
+				Op:        OpAdd,
+				Text:      ln[1:],
+				NewLineNo: newLine,
+			})
 			newLine++
 		case curHunk != nil && len(ln) > 0 && ln[0] == '-':
-			dl := DiffLine{Type: LineRemove, Text: ln[1:], OldLineNo: oldLine}
-			curHunk.Lines = append(curHunk.Lines, dl)
+			curHunk.Lines = append(curHunk.Lines, DiffLine{
+				Op:        OpRemove,
+				Text:      ln[1:],
+				OldLineNo: oldLine,
+			})
 			oldLine++
 		case curHunk != nil && len(ln) > 0 && ln[0] == ' ':
-			dl := DiffLine{Type: LineContext, Text: ln[1:], OldLineNo: oldLine, NewLineNo: newLine}
-			curHunk.Lines = append(curHunk.Lines, dl)
+			curHunk.Lines = append(curHunk.Lines, DiffLine{
+				Op:        OpContext,
+				Text:      ln[1:],
+				OldLineNo: oldLine,
+				NewLineNo: newLine,
+			})
 			oldLine++
 			newLine++
-		case curHunk != nil && strings.HasPrefix(ln, `\ `):
-			// "\ No newline at end of file"
-			curHunk.Lines = append(curHunk.Lines, DiffLine{Type: LineNoNewline, Text: ln[2:]})
 		case cur != nil:
-			// preamble extras (index..., new file mode, etc.)
 			cur.Preamble = append(cur.Preamble, ln)
 		}
 	}
@@ -134,17 +127,13 @@ func ParseUnifiedDiff(raw string) []FileDiff {
 	return result
 }
 
-// parseHunkHeader parses "@@ -oldStart,oldLines +newStart,newLines @@ ...".
 func parseHunkHeader(h string) (oldStart, newStart int) {
-	// Strip leading "@@ " and trailing " @@..."
 	inner := strings.TrimPrefix(h, "@@")
 	if i := strings.Index(inner, "@@"); i >= 0 {
 		inner = inner[:i]
 	}
 	inner = strings.TrimSpace(inner)
-	// e.g. "-10,3 +12,4"
-	parts := strings.Fields(inner)
-	for _, p := range parts {
+	for _, p := range strings.Fields(inner) {
 		if strings.HasPrefix(p, "-") {
 			oldStart = firstIntOf(p[1:])
 		} else if strings.HasPrefix(p, "+") {

@@ -186,6 +186,24 @@ func (r *Repo) Commit(msg string) error {
 	return err
 }
 
+// ApplyPatch applies the given unified diff to the index (--cached).
+// Set reverse=true to unstage (useful for line-level unstaging).
+func (r *Repo) ApplyPatch(patch string, reverse bool) error {
+	args := []string{"apply", "--cached", "--recount", "--whitespace=nowarn", "--unidiff-zero"}
+	if reverse {
+		args = append(args, "--reverse")
+	}
+	cmd := exec.Command("git", args...)
+	cmd.Dir = r.Root
+	cmd.Stdin = strings.NewReader(patch)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("git apply failed: %w: %s", err, stderr.String())
+	}
+	return nil
+}
+
 func (r *Repo) Branch() string {
 	out, err := r.run("rev-parse", "--abbrev-ref", "HEAD")
 	if err != nil {

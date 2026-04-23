@@ -1,18 +1,22 @@
 package main
 
 import (
+	"embed"
 	"fmt"
 	"os"
 
+	"github.com/wailsapp/wails/v2"
+	"github.com/wailsapp/wails/v2/pkg/options"
+	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	"github.com/wailsapp/wails/v2/pkg/options/mac"
+
 	"github.com/t4traw/pik/internal/git"
-	"github.com/t4traw/pik/internal/ui"
 )
 
-func main() {
-	// Before any Fyne theme init: if the user has a CJK-capable monospace font
-	// installed, point Fyne at it so Japanese renders correctly.
-	ui.DetectAndSetMonoFont()
+//go:embed all:frontend/dist
+var assets embed.FS
 
+func main() {
 	dir := "."
 	if len(os.Args) > 1 {
 		dir = os.Args[1]
@@ -22,7 +26,29 @@ func main() {
 		fmt.Fprintf(os.Stderr, "pik: %v\n", err)
 		os.Exit(1)
 	}
-	if err := ui.Run(repo); err != nil {
+
+	app := NewApp(repo)
+
+	err = wails.Run(&options.App{
+		Title:  "pik — " + repo.Root,
+		Width:  1200,
+		Height: 780,
+		AssetServer: &assetserver.Options{
+			Assets: assets,
+		},
+		BackgroundColour: &options.RGBA{R: 30, G: 30, B: 30, A: 1},
+		OnStartup:        app.startup,
+		Bind: []interface{}{
+			app,
+		},
+		Mac: &mac.Options{
+			TitleBar:             mac.TitleBarHiddenInset(),
+			WebviewIsTransparent: false,
+			WindowIsTranslucent:  false,
+		},
+	})
+
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "pik: %v\n", err)
 		os.Exit(1)
 	}
