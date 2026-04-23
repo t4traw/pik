@@ -9,8 +9,22 @@
   onMount(() => {
     appStore.refresh()
     const onFocus = () => appStore.refresh()
+    const onKey = (e: KeyboardEvent) => {
+      // Accept both Cmd (macOS) and Ctrl (cross-platform). Shift inverts to redo.
+      const mod = e.metaKey || e.ctrlKey
+      if (!mod || e.key.toLowerCase() !== 'z') return
+      // Ignore while the user is mid-IME composition.
+      if (e.isComposing) return
+      e.preventDefault()
+      if (e.shiftKey) appStore.redo()
+      else appStore.undo()
+    }
     window.addEventListener('focus', onFocus)
-    return () => window.removeEventListener('focus', onFocus)
+    window.addEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('focus', onFocus)
+      window.removeEventListener('keydown', onKey)
+    }
   })
 </script>
 

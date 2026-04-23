@@ -218,6 +218,24 @@ export namespace main {
 	        this.branch = source["branch"];
 	    }
 	}
+	export class UndoState {
+	    canUndo: boolean;
+	    canRedo: boolean;
+	    undoDesc: string;
+	    redoDesc: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new UndoState(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.canUndo = source["canUndo"];
+	        this.canRedo = source["canRedo"];
+	        this.undoDesc = source["undoDesc"];
+	        this.redoDesc = source["redoDesc"];
+	    }
+	}
 
 }
 

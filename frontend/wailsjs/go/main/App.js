@@ -18,6 +18,10 @@ export function Info() {
   return window['go']['main']['App']['Info']();
 }
 
+export function Redo() {
+  return window['go']['main']['App']['Redo']();
+}
+
 export function Stage(arg1) {
   return window['go']['main']['App']['Stage'](arg1);
 }
@@ -32,6 +36,14 @@ export function StageLines(arg1, arg2) {
 
 export function Status() {
   return window['go']['main']['App']['Status']();
+}
+
+export function Undo() {
+  return window['go']['main']['App']['Undo']();
+}
+
+export function UndoState() {
+  return window['go']['main']['App']['UndoState']();
 }
 
 export function Unstage(arg1) {

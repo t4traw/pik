@@ -11,7 +11,12 @@ import {
   StageLines,
   UnstageLines,
   Commit,
+  Undo,
+  Redo,
+  UndoState,
 } from '../../../wailsjs/go/main/App'
+
+type UndoInfo = { canUndo: boolean; canRedo: boolean; undoDesc: string; redoDesc: string }
 
 class AppStore {
   info = $state<RepoInfo>({ root: '', branch: '' })
@@ -28,6 +33,8 @@ class AppStore {
 
   commitMsg = $state<string>('')
   status = $state<string>('')
+
+  undo_ = $state<UndoInfo>({ canUndo: false, canRedo: false, undoDesc: '', redoDesc: '' })
 
   get selectedFile(): FileStatus | undefined {
     return this.files.find(
@@ -49,6 +56,7 @@ class AppStore {
     try {
       this.info = await Info()
       this.files = (await Status()) ?? []
+      this.undo_ = await UndoState()
     } catch (e: any) {
       this.status = `status error: ${e?.message ?? e}`
       return
@@ -187,6 +195,34 @@ class AppStore {
       await this.refresh()
     } catch (e: any) {
       this.status = `commit error: ${e?.message ?? e}`
+    }
+  }
+
+  async undo() {
+    try {
+      const desc = await Undo()
+      if (!desc) {
+        this.status = '戻せる操作はありません'
+        return
+      }
+      this.status = `元に戻しました: ${desc}`
+      await this.refresh()
+    } catch (e: any) {
+      this.status = `undo error: ${e?.message ?? e}`
+    }
+  }
+
+  async redo() {
+    try {
+      const desc = await Redo()
+      if (!desc) {
+        this.status = 'やり直す操作はありません'
+        return
+      }
+      this.status = `やり直しました: ${desc}`
+      await this.refresh()
+    } catch (e: any) {
+      this.status = `redo error: ${e?.message ?? e}`
     }
   }
 

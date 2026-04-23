@@ -11,6 +11,8 @@ export function Discard(arg1:string,arg2:boolean):Promise<void>;
 
 export function Info():Promise<main.RepoInfo>;
 
+export function Redo():Promise<string>;
+
 export function Stage(arg1:string):Promise<void>;
 
 export function StageAll():Promise<void>;
@@ -18,6 +20,10 @@ export function StageAll():Promise<void>;
 export function StageLines(arg1:string,arg2:Array<git.PatchHunk>):Promise<void>;
 
 export function Status():Promise<Array<git.FileStatus>>;
+
+export function Undo():Promise<string>;
+
+export function UndoState():Promise<main.UndoState>;
 
 export function Unstage(arg1:string):Promise<void>;
 

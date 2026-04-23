@@ -211,3 +211,43 @@ func (r *Repo) Branch() string {
 	}
 	return strings.TrimSpace(string(out))
 }
+
+// WriteTree snapshots the current index into a tree object and returns its SHA.
+// Used as an undo anchor for index-mutating operations.
+func (r *Repo) WriteTree() (string, error) {
+	out, err := r.run("write-tree")
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(out)), nil
+}
+
+// ReadTree restores the index to the given tree SHA. Working tree is untouched.
+func (r *Repo) ReadTree(sha string) error {
+	_, err := r.run("read-tree", sha)
+	return err
+}
+
+// HEADSha returns the current HEAD commit SHA, or "" when there are no commits
+// yet (fresh repo). The empty case is not treated as an error.
+func (r *Repo) HEADSha() (string, error) {
+	if !r.hasHEAD() {
+		return "", nil
+	}
+	out, err := r.run("rev-parse", "HEAD")
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(out)), nil
+}
+
+// ResetSoft moves HEAD to the given SHA without touching the index or working
+// tree. If sha is empty, HEAD is detached (used to undo the initial commit).
+func (r *Repo) ResetSoft(sha string) error {
+	if sha == "" {
+		_, err := r.run("update-ref", "-d", "HEAD")
+		return err
+	}
+	_, err := r.run("reset", "--soft", sha)
+	return err
+}
