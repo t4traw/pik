@@ -8,6 +8,9 @@
 
   onMount(() => {
     appStore.refresh()
+    const onFocus = () => appStore.refresh()
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
   })
 </script>
 
