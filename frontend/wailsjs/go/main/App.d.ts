@@ -10,6 +10,8 @@ export function Diff(arg1:string,arg2:boolean,arg3:boolean):Promise<main.DiffRes
 
 export function Discard(arg1:string,arg2:boolean):Promise<void>;
 
+export function GenerateCommitMessage():Promise<string>;
+
 export function GetSettings():Promise<settings.Settings>;
 
 export function Info():Promise<main.RepoInfo>;

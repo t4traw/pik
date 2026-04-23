@@ -1,5 +1,6 @@
 <script lang="ts">
   import { appStore } from '../stores/app.svelte'
+  import Icon from './Icon.svelte'
 
   function onKeyDown(e: KeyboardEvent) {
     // Cmd/Ctrl + Enter submits, without competing with IME confirm Enter.
@@ -20,6 +21,19 @@
   ></textarea>
   <div class="flex items-center gap-2">
     <span class="flex-1 text-[11px] text-fg-dim truncate">{appStore.status}</span>
+    <button
+      type="button"
+      aria-label="claudeでコミットメッセージを生成"
+      title="Claude Code で生成"
+      class="w-7 h-7 flex items-center justify-center rounded border border-[var(--color-border)] text-[var(--color-fg-muted)] hover:text-white hover:bg-[var(--color-bg-softer)] disabled:opacity-40 disabled:cursor-not-allowed"
+      disabled={appStore.generating || appStore.stagedFiles.length === 0}
+      onclick={() => appStore.generateCommitMessage()}>
+      {#if appStore.generating}
+        <span class="inline-block w-3 h-3 rounded-full border-2 border-current border-t-transparent animate-spin"></span>
+      {:else}
+        <Icon name="sparkles" size={14} />
+      {/if}
+    </button>
     <button
       type="button"
       class="px-3 py-1 rounded bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] text-white text-[12px] font-semibold disabled:opacity-50"

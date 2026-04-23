@@ -14,6 +14,10 @@ export function Discard(arg1, arg2) {
   return window['go']['main']['App']['Discard'](arg1, arg2);
 }
 
+export function GenerateCommitMessage() {
+  return window['go']['main']['App']['GenerateCommitMessage']();
+}
+
 export function GetSettings() {
   return window['go']['main']['App']['GetSettings']();
 }

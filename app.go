@@ -1,11 +1,16 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
+	"time"
 
 	"github.com/t4traw/pik/internal/git"
 	"github.com/t4traw/pik/internal/settings"
@@ -236,6 +241,61 @@ func (a *App) Discard(path string, untracked bool) error {
 		Redo: func() error { return a.repo.Discard(path, untracked) },
 	})
 	return nil
+}
+
+// ---- AI commit message ----
+
+// generateCommitPrompt — kept short on purpose. Project conventions live in
+// CLAUDE.md; `claude -p` picks those up automatically via the repo cwd.
+const generateCommitPrompt = `stdin のステージ済み git 差分を読んで、このリポジトリの CLAUDE.md に従った 1 行のコミットメッセージを出力してください。
+
+出力ルール:
+- コミットメッセージ本文のみを 1 行で出力
+- 前置き・説明・コードブロック・引用符を一切含めない
+- 先頭に "commit:" や "Message:" のようなラベルを付けない`
+
+// GenerateCommitMessage shells out to the locally-installed `claude` CLI and
+// asks it to propose a commit message for the current staged diff. Requires
+// the user to have `claude` on PATH and be logged in.
+func (a *App) GenerateCommitMessage() (string, error) {
+	diff, err := a.repo.StagedDiff()
+	if err != nil {
+		return "", err
+	}
+	if strings.TrimSpace(diff) == "" {
+		return "", fmt.Errorf("ステージ済みの変更がありません")
+	}
+
+	parent := a.ctx
+	if parent == nil {
+		parent = context.Background()
+	}
+	ctx, cancel := context.WithTimeout(parent, 60*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "claude", "-p", generateCommitPrompt)
+	// cwd = repo root so Claude Code auto-loads the project's CLAUDE.md.
+	cmd.Dir = a.repo.Root
+	cmd.Stdin = strings.NewReader(diff)
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		if errors.Is(err, exec.ErrNotFound) {
+			return "", fmt.Errorf("claude CLI が見つかりません。Claude Code をインストールしてください")
+		}
+		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			return "", fmt.Errorf("claude の応答がタイムアウトしました (60秒)")
+		}
+		return "", fmt.Errorf("claude 実行エラー: %w: %s", err, strings.TrimSpace(stderr.String()))
+	}
+	msg := strings.TrimSpace(stdout.String())
+	// Occasionally the model wraps the line in backticks despite instructions.
+	msg = strings.Trim(msg, "`")
+	if idx := strings.IndexByte(msg, '\n'); idx >= 0 {
+		msg = strings.TrimSpace(msg[:idx])
+	}
+	return msg, nil
 }
 
 // ---- settings ----

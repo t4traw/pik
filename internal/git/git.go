@@ -122,6 +122,16 @@ func (r *Repo) Diff(path string, staged bool) (string, error) {
 	return string(out), nil
 }
 
+// StagedDiff returns the entire staged diff across all files, suitable for
+// feeding to an external tool (e.g. an LLM for commit-message generation).
+func (r *Repo) StagedDiff() (string, error) {
+	out, err := r.run("diff", "--cached", "--no-color")
+	if err != nil {
+		return "", err
+	}
+	return string(out), nil
+}
+
 func (r *Repo) DiffUntracked(path string) (string, error) {
 	// git diff --no-index exits with status 1 when files differ — which is the
 	// whole point here — so we allow it.

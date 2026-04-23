@@ -24,6 +24,8 @@ pik ~/repo   # explicit path
 - Commit directly from the UI (⌘↩ to submit)
 - Auto-refresh on window focus — no stale diffs after editing files outside
 - Undo / redo for every mutation (⌘Z / ⌘⇧Z)
+- Configurable diff font size via the settings panel
+- **AI commit messages** — one click generates a commit message from the staged diff via your local `claude` CLI. Respects the repo's `CLAUDE.md` conventions automatically.
 
 ## Keyboard shortcuts
 

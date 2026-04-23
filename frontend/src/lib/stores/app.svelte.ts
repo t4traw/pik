@@ -16,6 +16,7 @@ import {
   UndoState,
   GetSettings,
   UpdateSettings,
+  GenerateCommitMessage,
 } from '../../../wailsjs/go/main/App'
 
 type UndoInfo = { canUndo: boolean; canRedo: boolean; undoDesc: string; redoDesc: string }
@@ -41,6 +42,8 @@ class AppStore {
 
   settings = $state<Settings>({ fontSize: 12 })
   settingsOpen = $state<boolean>(false)
+
+  generating = $state<boolean>(false)
 
   get selectedFile(): FileStatus | undefined {
     return this.files.find(
@@ -245,6 +248,27 @@ class AppStore {
       this.settings = (await UpdateSettings(next as any)) ?? next
     } catch (e: any) {
       this.status = `settings save error: ${e?.message ?? e}`
+    }
+  }
+
+  async generateCommitMessage() {
+    if (this.generating) return
+    if (this.stagedFiles.length === 0) {
+      this.status = 'ステージ済みの変更がないよ'
+      return
+    }
+    this.generating = true
+    this.status = 'claude で生成中…'
+    try {
+      const msg = await GenerateCommitMessage()
+      if (msg) {
+        this.commitMsg = msg
+        this.status = '生成完了'
+      }
+    } catch (e: any) {
+      this.status = `${e?.message ?? e}`
+    } finally {
+      this.generating = false
     }
   }
 
