@@ -92,7 +92,7 @@
     </div>
 
     <!-- Body -->
-    <div class="flex-1 overflow-auto font-mono text-[12px] leading-[1.5] no-select" style="user-select: text;">
+    <div class="flex-1 overflow-auto font-mono leading-[1.5] no-select" style="user-select: text; font-size: var(--pik-font-size, 12px);">
       {#if appStore.loading}
         <div class="text-center text-fg-dim py-6">読込中…</div>
       {:else if appStore.diffFiles.length === 0}

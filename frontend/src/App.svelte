@@ -5,9 +5,11 @@
   import DiffView from './lib/components/DiffView.svelte'
   import CommitBox from './lib/components/CommitBox.svelte'
   import Icon from './lib/components/Icon.svelte'
+  import SettingsModal from './lib/components/SettingsModal.svelte'
 
   onMount(() => {
     appStore.refresh()
+    appStore.loadSettings()
     const onFocus = () => appStore.refresh()
     const onKey = (e: KeyboardEvent) => {
       // Accept both Cmd (macOS) and Ctrl (cross-platform). Shift inverts to redo.
@@ -28,7 +30,7 @@
   })
 </script>
 
-<div class="flex flex-col h-full">
+<div class="flex flex-col h-full" style="--pik-font-size: {appStore.settings.fontSize}px;">
   <!-- Title bar (drag region, matches macOS traffic-light layout) -->
   <div
     class="flex items-center gap-3 pr-2 bg-[var(--color-bg-soft)] border-b border-[var(--color-border)] text-[12px] select-none"
@@ -47,7 +49,17 @@
       onclick={() => appStore.refresh()}>
       <Icon name="refresh" size={15} />
     </button>
+    <button
+      type="button"
+      aria-label="Settings"
+      class="shrink-0 w-7 h-7 flex items-center justify-center rounded text-[var(--color-fg-muted)] hover:text-white hover:bg-[var(--color-bg-softer)] transition-colors"
+      style="--wails-draggable: no-drag;"
+      onclick={() => (appStore.settingsOpen = true)}>
+      <Icon name="settings" size={15} />
+    </button>
   </div>
+
+  <SettingsModal />
 
   <!-- Main split -->
   <div class="flex-1 grid overflow-hidden" style="grid-template-columns: minmax(260px, 340px) 1fr;">

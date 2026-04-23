@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/t4traw/pik/internal/git"
+	"github.com/t4traw/pik/internal/settings"
 )
 
 // App is bound to the Wails frontend. All exported methods are callable
@@ -235,6 +236,20 @@ func (a *App) Discard(path string, untracked bool) error {
 		Redo: func() error { return a.repo.Discard(path, untracked) },
 	})
 	return nil
+}
+
+// ---- settings ----
+
+func (a *App) GetSettings() settings.Settings {
+	s, _ := settings.Load()
+	return s
+}
+
+func (a *App) UpdateSettings(s settings.Settings) (settings.Settings, error) {
+	if err := settings.Save(s); err != nil {
+		return settings.Defaults(), err
+	}
+	return settings.Sanitize(s), nil
 }
 
 // Commit creates a new commit and records the pre-commit HEAD so undo can

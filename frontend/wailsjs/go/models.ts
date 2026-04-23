@@ -239,3 +239,20 @@ export namespace main {
 
 }
 
+export namespace settings {
+	
+	export class Settings {
+	    fontSize: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new Settings(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.fontSize = source["fontSize"];
+	    }
+	}
+
+}
+

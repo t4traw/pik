@@ -14,6 +14,10 @@ export function Discard(arg1, arg2) {
   return window['go']['main']['App']['Discard'](arg1, arg2);
 }
 
+export function GetSettings() {
+  return window['go']['main']['App']['GetSettings']();
+}
+
 export function Info() {
   return window['go']['main']['App']['Info']();
 }
@@ -56,4 +60,8 @@ export function UnstageAll() {
 
 export function UnstageLines(arg1, arg2) {
   return window['go']['main']['App']['UnstageLines'](arg1, arg2);
+}
+
+export function UpdateSettings(arg1) {
+  return window['go']['main']['App']['UpdateSettings'](arg1);
 }

@@ -14,9 +14,12 @@ import {
   Undo,
   Redo,
   UndoState,
+  GetSettings,
+  UpdateSettings,
 } from '../../../wailsjs/go/main/App'
 
 type UndoInfo = { canUndo: boolean; canRedo: boolean; undoDesc: string; redoDesc: string }
+export type Settings = { fontSize: number }
 
 class AppStore {
   info = $state<RepoInfo>({ root: '', branch: '' })
@@ -35,6 +38,9 @@ class AppStore {
   status = $state<string>('')
 
   undo_ = $state<UndoInfo>({ canUndo: false, canRedo: false, undoDesc: '', redoDesc: '' })
+
+  settings = $state<Settings>({ fontSize: 12 })
+  settingsOpen = $state<boolean>(false)
 
   get selectedFile(): FileStatus | undefined {
     return this.files.find(
@@ -223,6 +229,22 @@ class AppStore {
       await this.refresh()
     } catch (e: any) {
       this.status = `redo error: ${e?.message ?? e}`
+    }
+  }
+
+  async loadSettings() {
+    try {
+      this.settings = (await GetSettings()) ?? this.settings
+    } catch (e: any) {
+      this.status = `settings load error: ${e?.message ?? e}`
+    }
+  }
+
+  async saveSettings(next: Settings) {
+    try {
+      this.settings = (await UpdateSettings(next as any)) ?? next
+    } catch (e: any) {
+      this.status = `settings save error: ${e?.message ?? e}`
     }
   }
 
