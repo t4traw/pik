@@ -1,0 +1,22 @@
+name: release-please
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@v4
+        with:
+          # Use the PAT so the tag/release release-please creates actually
+          # triggers downstream workflows (the default GITHUB_TOKEN does not
+          # fan out to other workflows as a safety measure).
+          token: ${{ secrets.TAP_GITHUB_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json

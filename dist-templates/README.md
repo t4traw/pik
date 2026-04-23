@@ -41,22 +41,49 @@ brew install pik
 
 これで Actions から `t4traw/homebrew-pik` に push できるようになる。
 
-## 3. リリース手順 (これだけ!)
+## 3. 日々のリリース手順
+
+### 3-1. コミットは conventional commits で
+
+| prefix | 意味 | バージョン影響 |
+|---|---|---|
+| `feat: ...` | 新機能 | minor up (0.1.0 → 0.2.0) |
+| `fix: ...` | バグ修正 | patch up (0.1.0 → 0.1.1) |
+| `feat!: ...` or `fix!: ...` | 破壊的変更 | 1.0.0 未満は minor up |
+| `chore: ...` / `docs: ...` / `refactor: ...` / `test: ...` | リリースに含めない | なし |
+
+例:
 
 ```sh
-git tag v0.1.0
-git push origin v0.1.0
+git commit -m "feat: 複数コミットへのドラッグ分類に対応"
+git commit -m "fix: 日本語入力時の改行を抑止"
 ```
 
-あとは自動で:
+### 3-2. push する
 
-1. macOS runner で universal `.app` をビルド
-2. `dist/pik-v0.1.0-darwin-universal.tar.gz` を作る
-3. GitHub Release を作成、tarball を添付
-4. SHA-256 を計算して release notes に書き込む
-5. **`t4traw/homebrew-pik` の `Formula/pik.rb` を自動更新 & commit & push**
+```sh
+git push
+```
 
-完了後、ユーザーは:
+### 3-3. release-please が自動で release PR を開く
+
+`.github/workflows/release-please.yml` が main への push を watch して、
+次回分のバージョンと CHANGELOG.md 更新案を含む PR を開く:
+
+- タイトル: `chore: release 0.2.0`
+- 中身: CHANGELOG.md に feat/fix のまとめ + `.release-please-manifest.json` のバージョン bump
+
+### 3-4. PR を merge する
+
+この PR を merge するだけ。以降すべて自動:
+
+1. release-please がタグ (`v0.2.0`) + GitHub Release を作成
+2. タグ push で `release.yml` が発火
+3. macOS runner で universal `.app` ビルド
+4. tarball を先ほどの Release に添付
+5. SHA-256 計算 → `t4traw/homebrew-pik/Formula/pik.rb` 自動更新
+
+ユーザー側:
 
 ```sh
 brew install t4traw/pik/pik     # 初回
