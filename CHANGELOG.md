@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.3](https://github.com/t4traw/pik/compare/v0.1.2...v0.1.3) (2026-04-24)
+
+
+### Features
+
+* キーボードショートカットでファイル選択・ステージ・コミットを操作可能に ([f36dd63](https://github.com/t4traw/pik/commit/f36dd6375913205739f3eddc20f30c40d2f6f7bc))
+* キーボードショートカット一覧モーダルを追加 ([bfcbff8](https://github.com/t4traw/pik/commit/bfcbff8e8f34d7b70b05df389c693163bf6cfd49))
+
 ## [0.1.2](https://github.com/t4traw/pik/compare/v0.1.1...v0.1.2) (2026-04-23)
 
 
