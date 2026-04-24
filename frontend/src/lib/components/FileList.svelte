@@ -4,6 +4,16 @@
   import Icon from './Icon.svelte'
 
   let dragOverTarget = $state<'staged' | 'changes' | null>(null)
+  let listRoot = $state<HTMLElement | null>(null)
+
+  $effect(() => {
+    const path = appStore.selectedPath
+    const staged = appStore.selectedStaged
+    if (!path || !listRoot) return
+    const sel = `[data-path="${CSS.escape(path)}"][data-staged="${staged ? '1' : '0'}"]`
+    const el = listRoot.querySelector(sel) as HTMLElement | null
+    el?.scrollIntoView({ block: 'nearest' })
+  })
 
   function badgeFor(f: FileStatus, staged: boolean): { char: string; color: string } {
     const code = staged ? f.IndexStatus : f.Untracked ? 63 : f.WorkStatus // '?' = 63
@@ -63,7 +73,7 @@
   }
 </script>
 
-<div class="flex flex-col h-full bg-[var(--color-bg-soft)] overflow-hidden text-[13px]">
+<div bind:this={listRoot} class="flex flex-col h-full bg-[var(--color-bg-soft)] overflow-hidden text-[13px]">
   <!-- STAGED header + drop zone -->
   <div
     role="group"
@@ -100,6 +110,8 @@
       <div
         class="group flex items-center pl-2 pr-1 h-7 cursor-pointer hover:bg-[var(--color-bg-softer)] {selected ? 'bg-[var(--color-selected)]' : ''}"
         draggable="true"
+        data-path={f.Path}
+        data-staged="1"
         ondragstart={(e) => onDragStart(e, f.Path, true)}
         role="listitem"
         onclick={() => appStore.selectFile(f, true)}
@@ -155,6 +167,8 @@
       <div
         class="group flex items-center pl-2 pr-1 h-7 cursor-pointer hover:bg-[var(--color-bg-softer)] {selected ? 'bg-[var(--color-selected)]' : ''}"
         draggable="true"
+        data-path={f.Path}
+        data-staged="0"
         ondragstart={(e) => onDragStart(e, f.Path, false)}
         role="listitem"
         onclick={() => appStore.selectFile(f, false)}

@@ -13,6 +13,7 @@
 
 <div class="border-t border-[var(--color-border)] bg-[var(--color-bg-soft)] p-2 flex flex-col gap-2">
   <textarea
+    id="pik-panel-commit"
     class="w-full resize-none bg-[var(--color-bg)] text-fg text-[13px] p-2 rounded border border-[var(--color-border)] focus:outline-none focus:border-[var(--color-accent)] font-sans"
     placeholder="コミットメッセージ ( ⌘↵ で確定 )"
     rows="3"

@@ -15,7 +15,7 @@ WAILS    := $(shell command -v wails || echo $(shell go env GOPATH)/bin/wails)
 # ---- Dev / local install ----
 
 dev:
-	$(WAILS) dev
+	PIK_NO_RELAUNCH=1 $(WAILS) dev
 
 build:
 	$(WAILS) build

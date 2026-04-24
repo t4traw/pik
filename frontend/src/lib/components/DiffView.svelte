@@ -115,7 +115,12 @@
                 class="flex {lineClass(line)} {isSel ? 'ring-1 ring-inset ring-white/50' : ''}"
                 onclick={(e) => clickLine(hi, li, e)}
                 role="row"
-                onkeydown={(e) => e.key === ' ' && clickLine(hi, li, e as any)}
+                onkeydown={(e) => {
+                  if (e.key !== ' ') return
+                  e.preventDefault()
+                  e.stopPropagation()
+                  clickLine(hi, li, e as any)
+                }}
                 tabindex={line.op === 'context' ? -1 : 0}
               >
                 <!-- stripe -->

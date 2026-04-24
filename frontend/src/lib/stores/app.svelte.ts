@@ -96,6 +96,50 @@ class AppStore {
     await this.loadDiff(file, staged)
   }
 
+  async moveSelection(direction: 'up' | 'down' | 'left' | 'right') {
+    const staged = this.stagedFiles
+    const unstaged = this.unstagedFiles
+    const flat: Array<{ file: FileStatus; staged: boolean }> = [
+      ...staged.map((f) => ({ file: f, staged: true })),
+      ...unstaged.map((f) => ({ file: f, staged: false })),
+    ]
+    if (flat.length === 0) return
+
+    const idx = flat.findIndex(
+      (x) => x.file.Path === this.selectedPath && x.staged === this.selectedStaged,
+    )
+
+    if (direction === 'up' || direction === 'down') {
+      const delta = direction === 'down' ? 1 : -1
+      const next =
+        idx < 0
+          ? direction === 'down'
+            ? 0
+            : flat.length - 1
+          : Math.max(0, Math.min(flat.length - 1, idx + delta))
+      const t = flat[next]
+      await this.selectFile(t.file, t.staged)
+      return
+    }
+
+    // left: jump to the staged side. right: jump to the unstaged side.
+    // Prefer the twin (same path) on the other side if it exists, else fall back
+    // to the first file in the target section.
+    const wantStaged = direction === 'left'
+    const cur = idx >= 0 ? flat[idx] : undefined
+    if (cur && cur.staged !== wantStaged) {
+      const twin = flat.find((x) => x.file.Path === cur.file.Path && x.staged === wantStaged)
+      if (twin) {
+        await this.selectFile(twin.file, twin.staged)
+        return
+      }
+    }
+    const targetList = wantStaged ? staged : unstaged
+    if (targetList.length > 0) {
+      await this.selectFile(targetList[0], wantStaged)
+    }
+  }
+
   async loadDiff(file: FileStatus, staged: boolean) {
     this.loading = true
     try {
@@ -133,6 +177,22 @@ class AppStore {
 
   hasLineSelection(): boolean {
     return this.selectedLines.size > 0
+  }
+
+  async toggleStageSelected() {
+    const f = this.selectedFile
+    if (!f) return
+    if (this.selectedStaged) await this.unstage(f.Path)
+    else await this.stage(f.Path)
+  }
+
+  async discardSelected() {
+    const f = this.selectedFile
+    if (!f || this.selectedStaged) return
+    const msg = f.Untracked
+      ? `未追跡ファイルを削除する？\n${f.Path}`
+      : `変更を破棄する？\n${f.Path}`
+    if (confirm(msg)) await this.discard(f.Path, f.Untracked)
   }
 
   async stage(path: string) {
