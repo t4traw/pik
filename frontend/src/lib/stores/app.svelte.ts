@@ -42,6 +42,7 @@ class AppStore {
 
   settings = $state<Settings>({ fontSize: 12 })
   settingsOpen = $state<boolean>(false)
+  shortcutsOpen = $state<boolean>(false)
 
   generating = $state<boolean>(false)
 

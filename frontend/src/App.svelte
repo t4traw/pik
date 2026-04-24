@@ -6,6 +6,7 @@
   import CommitBox from './lib/components/CommitBox.svelte'
   import Icon from './lib/components/Icon.svelte'
   import SettingsModal from './lib/components/SettingsModal.svelte'
+  import ShortcutsModal from './lib/components/ShortcutsModal.svelte'
 
   onMount(() => {
     appStore.refresh()
@@ -39,6 +40,26 @@
       const k = e.key.toLowerCase()
       const mod = e.metaKey || e.ctrlKey
       const editable = isEditable(e.target)
+
+      // `?` opens the shortcuts cheatsheet. Outside editables so it doesn't
+      // steal the key from text input.
+      if (!editable && !mod && e.key === '?') {
+        e.preventDefault()
+        appStore.shortcutsOpen = true
+        return
+      }
+
+      // Any modal open → swallow everything except Undo/Redo so shortcuts
+      // don't mutate the file behind the dialog. Esc close is owned by the
+      // modal component itself.
+      if (appStore.settingsOpen || appStore.shortcutsOpen) {
+        if (mod && k === 'z') {
+          e.preventDefault()
+          if (e.shiftKey) appStore.redo()
+          else appStore.undo()
+        }
+        return
+      }
 
       // Undo / Redo (global).
       if (mod && k === 'z') {
@@ -131,6 +152,15 @@
     </button>
     <button
       type="button"
+      aria-label="キーボードショートカット"
+      title="キーボードショートカット (?)"
+      class="shrink-0 w-7 h-7 flex items-center justify-center rounded text-[var(--color-fg-muted)] hover:text-white hover:bg-[var(--color-bg-softer)] transition-colors"
+      style="--wails-draggable: no-drag;"
+      onclick={() => (appStore.shortcutsOpen = true)}>
+      <Icon name="help" size={15} />
+    </button>
+    <button
+      type="button"
       aria-label="Settings"
       class="shrink-0 w-7 h-7 flex items-center justify-center rounded text-[var(--color-fg-muted)] hover:text-white hover:bg-[var(--color-bg-softer)] transition-colors"
       style="--wails-draggable: no-drag;"
@@ -140,6 +170,7 @@
   </div>
 
   <SettingsModal />
+  <ShortcutsModal />
 
   <!-- Main split -->
   <div class="flex-1 grid overflow-hidden" style="grid-template-columns: minmax(260px, 340px) 1fr;">
