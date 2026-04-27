@@ -1,5 +1,6 @@
 <script lang="ts">
   import { appStore } from '../stores/app.svelte'
+  import { t } from '../i18n/index.svelte'
   import type { DiffLine } from '../types'
 
   let lastAnchor = $state<{ hunkIdx: number; lineIdx: number } | null>(null)
@@ -62,7 +63,7 @@
 </script>
 
 {#if !appStore.selectedPath}
-  <div class="flex-1 flex items-center justify-center text-fg-dim">ファイルを選択してね</div>
+  <div class="flex-1 flex items-center justify-center text-fg-dim">{t('diff.selectFile')}</div>
 {:else}
   <div class="flex flex-col h-full overflow-hidden">
     <!-- Header -->
@@ -72,31 +73,31 @@
         <span class="ml-2 text-[11px] text-fg-dim">({appStore.selectedStaged ? 'staged' : 'unstaged'})</span>
       </span>
       {#if appStore.hasLineSelection()}
-        <span class="text-[11px] text-fg-muted">{appStore.selectedLines.size}行選択</span>
+        <span class="text-[11px] text-fg-muted">{t('diff.linesSelected', { count: appStore.selectedLines.size })}</span>
         {#if appStore.selectedStaged}
           <button
             type="button"
             class="px-2 py-0.5 text-[11px] rounded bg-amber-600 hover:bg-amber-500 text-white"
-            onclick={unstageSelected}>選択をアンステージ</button>
+            onclick={unstageSelected}>{t('diff.unstageSelected')}</button>
         {:else}
           <button
             type="button"
             class="px-2 py-0.5 text-[11px] rounded bg-emerald-600 hover:bg-emerald-500 text-white"
-            onclick={stageSelected}>選択をステージ</button>
+            onclick={stageSelected}>{t('diff.stageSelected')}</button>
         {/if}
         <button
           type="button"
           class="px-2 py-0.5 text-[11px] rounded bg-[var(--color-bg-softer)] hover:brightness-125 text-fg-muted"
-          onclick={() => appStore.clearLineSelection()}>解除</button>
+          onclick={() => appStore.clearLineSelection()}>{t('diff.clearSelection')}</button>
       {/if}
     </div>
 
     <!-- Body -->
     <div class="flex-1 overflow-auto font-mono leading-[1.5] no-select" style="user-select: text; font-size: var(--pik-font-size, 12px);">
       {#if appStore.loading}
-        <div class="text-center text-fg-dim py-6">読込中…</div>
+        <div class="text-center text-fg-dim py-6">{t('diff.loading')}</div>
       {:else if appStore.diffFiles.length === 0}
-        <div class="text-center text-fg-dim py-6">差分なし</div>
+        <div class="text-center text-fg-dim py-6">{t('diff.noDiff')}</div>
       {:else}
         {#each appStore.diffFiles as file}
           {#each file.hunks as hunk, hi}
@@ -106,7 +107,7 @@
               <button
                 type="button"
                 class="opacity-0 group-hover/hunk:opacity-100 text-[11px] hover:text-white"
-                onclick={() => selectAll(hi)}>このハンクを全選択</button>
+                onclick={() => selectAll(hi)}>{t('diff.selectAllInHunk')}</button>
             </div>
             <!-- Lines -->
             {#each hunk.lines as line, li}
@@ -142,7 +143,7 @@
             {/each}
           {/each}
           {#if file.binary}
-            <div class="text-center text-fg-dim py-6">(バイナリファイル)</div>
+            <div class="text-center text-fg-dim py-6">{t('diff.binaryFile')}</div>
           {/if}
         {/each}
       {/if}

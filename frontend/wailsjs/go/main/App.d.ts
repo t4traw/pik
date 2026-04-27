@@ -6,6 +6,8 @@ import {git} from '../models';
 
 export function Commit(arg1:string):Promise<void>;
 
+export function DetectLocale():Promise<string>;
+
 export function Diff(arg1:string,arg2:boolean,arg3:boolean):Promise<main.DiffResult>;
 
 export function Discard(arg1:string,arg2:boolean):Promise<void>;

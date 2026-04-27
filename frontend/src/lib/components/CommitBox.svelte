@@ -1,5 +1,6 @@
 <script lang="ts">
   import { appStore } from '../stores/app.svelte'
+  import { t } from '../i18n/index.svelte'
   import Icon from './Icon.svelte'
 
   function onKeyDown(e: KeyboardEvent) {
@@ -15,7 +16,7 @@
   <textarea
     id="pik-panel-commit"
     class="w-full resize-none bg-[var(--color-bg)] text-fg text-[13px] p-2 rounded border border-[var(--color-border)] focus:outline-none focus:border-[var(--color-accent)] font-sans"
-    placeholder="コミットメッセージ ( ⌘↵ で確定 )"
+    placeholder={t('commit.placeholder')}
     rows="3"
     bind:value={appStore.commitMsg}
     onkeydown={onKeyDown}
@@ -24,8 +25,8 @@
     <span class="flex-1 text-[11px] text-fg-dim truncate">{appStore.status}</span>
     <button
       type="button"
-      aria-label="claudeでコミットメッセージを生成"
-      title="Claude Code で生成"
+      aria-label={t('commit.aiGenerateAria')}
+      title={t('commit.aiGenerateTitle')}
       class="w-7 h-7 flex items-center justify-center rounded border border-[var(--color-border)] text-[var(--color-fg-muted)] hover:text-white hover:bg-[var(--color-bg-softer)] disabled:opacity-40 disabled:cursor-not-allowed"
       disabled={appStore.generating || appStore.stagedFiles.length === 0}
       onclick={() => appStore.generateCommitMessage()}>
@@ -39,6 +40,6 @@
       type="button"
       class="px-3 py-1 rounded bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] text-white text-[12px] font-semibold disabled:opacity-50"
       disabled={!appStore.commitMsg.trim() || appStore.stagedFiles.length === 0}
-      onclick={() => appStore.commit()}>コミット</button>
+      onclick={() => appStore.commit()}>{t('commit.commitButton')}</button>
   </div>
 </div>

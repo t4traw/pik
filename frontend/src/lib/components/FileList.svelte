@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { FileStatus } from '../types'
   import { appStore } from '../stores/app.svelte'
+  import { t } from '../i18n/index.svelte'
   import Icon from './Icon.svelte'
 
   let dragOverTarget = $state<'staged' | 'changes' | null>(null)
@@ -67,8 +68,8 @@
 
   async function discardFile(f: FileStatus) {
     const msg = f.Untracked
-      ? `未追跡ファイルを削除する？\n${f.Path}`
-      : `変更を破棄する？\n${f.Path}`
+      ? t('fileList.confirmDeleteUntracked', { path: f.Path })
+      : t('fileList.confirmDiscardChanges', { path: f.Path })
     if (confirm(msg)) await appStore.discard(f.Path, f.Untracked)
   }
 </script>
@@ -83,12 +84,12 @@
     class="flex items-center justify-between px-3 h-8 bg-[var(--color-bg-softer)] border-b border-[var(--color-border)] {dragOverTarget === 'staged' ? 'ring-2 ring-inset ring-[var(--color-accent)]' : ''}"
   >
     <span class="text-[11px] font-semibold tracking-wider text-[var(--color-fg-muted)]">
-      STAGED CHANGES ({appStore.stagedFiles.length})
+      {t('fileList.stagedChanges')} ({appStore.stagedFiles.length})
     </span>
     {#if appStore.stagedFiles.length > 0}
       <button
         type="button"
-        aria-label="すべてアンステージ"
+        aria-label={t('fileList.unstageAll')}
         class="flex items-center gap-1 h-6 px-2 rounded text-[11px] text-[var(--color-fg-muted)] hover:text-white hover:bg-[var(--color-bg)] transition-colors"
         onclick={() => appStore.unstageAll()}>
         <Icon name="undo" size={13} />
@@ -123,7 +124,7 @@
         <span class="ml-2 text-[11px] text-[var(--color-fg-dim)] truncate max-w-[40%]">{dirname(f.Path)}</span>
         <button
           type="button"
-          aria-label="アンステージ"
+          aria-label={t('fileList.unstage')}
           class="ml-1 w-6 h-6 flex items-center justify-center rounded opacity-0 group-hover:opacity-100 text-[var(--color-fg-muted)] hover:text-white hover:bg-[var(--color-bg)]"
           onclick={(e) => { e.stopPropagation(); appStore.unstage(f.Path) }}>
           <Icon name="undo" size={14} />
@@ -141,12 +142,12 @@
     class="flex items-center justify-between px-3 h-8 bg-[var(--color-bg-softer)] border-b border-t border-[var(--color-border)] {dragOverTarget === 'changes' ? 'ring-2 ring-inset ring-[var(--color-accent)]' : ''}"
   >
     <span class="text-[11px] font-semibold tracking-wider text-[var(--color-fg-muted)]">
-      CHANGES ({appStore.unstagedFiles.length})
+      {t('fileList.changes')} ({appStore.unstagedFiles.length})
     </span>
     {#if appStore.unstagedFiles.length > 0}
       <button
         type="button"
-        aria-label="すべてステージ"
+        aria-label={t('fileList.stageAll')}
         class="flex items-center gap-1 h-6 px-2 rounded text-[11px] text-[var(--color-fg-muted)] hover:text-white hover:bg-[var(--color-bg)] transition-colors"
         onclick={() => appStore.stageAll()}>
         <Icon name="plus" size={13} />
@@ -180,14 +181,14 @@
         <span class="ml-2 text-[11px] text-[var(--color-fg-dim)] truncate max-w-[40%]">{dirname(f.Path)}</span>
         <button
           type="button"
-          aria-label={f.Untracked ? '削除' : '変更破棄'}
+          aria-label={f.Untracked ? t('fileList.delete') : t('fileList.discard')}
           class="ml-1 w-6 h-6 flex items-center justify-center rounded opacity-0 group-hover:opacity-100 text-[var(--color-fg-muted)] hover:text-rose-300 hover:bg-[var(--color-bg)]"
           onclick={(e) => { e.stopPropagation(); discardFile(f) }}>
           <Icon name={f.Untracked ? 'trash' : 'undo'} size={14} />
         </button>
         <button
           type="button"
-          aria-label="ステージ"
+          aria-label={t('fileList.stage')}
           class="ml-0.5 w-6 h-6 flex items-center justify-center rounded opacity-0 group-hover:opacity-100 text-[var(--color-fg-muted)] hover:text-emerald-300 hover:bg-[var(--color-bg)]"
           onclick={(e) => { e.stopPropagation(); appStore.stage(f.Path) }}>
           <Icon name="plus" size={14} />
@@ -196,7 +197,7 @@
     {/each}
 
     {#if appStore.files.length === 0}
-      <div class="text-center text-[var(--color-fg-dim)] py-6 text-[12px]">変更なし</div>
+      <div class="text-center text-[var(--color-fg-dim)] py-6 text-[12px]">{t('fileList.noChanges')}</div>
     {/if}
   </div>
 </div>

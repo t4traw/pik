@@ -6,6 +6,10 @@ export function Commit(arg1) {
   return window['go']['main']['App']['Commit'](arg1);
 }
 
+export function DetectLocale() {
+  return window['go']['main']['App']['DetectLocale']();
+}
+
 export function Diff(arg1, arg2, arg3) {
   return window['go']['main']['App']['Diff'](arg1, arg2, arg3);
 }

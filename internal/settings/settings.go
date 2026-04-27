@@ -10,13 +10,15 @@ import (
 // Settings is the user-configurable state persisted across runs. Keep this
 // struct JSON-stable — fields are read verbatim from disk.
 type Settings struct {
-	FontSize int `json:"fontSize"`
+	FontSize int    `json:"fontSize"`
+	Language string `json:"language"`
 }
 
 // Defaults returns the baseline values used on a fresh install, when the
-// config file is missing, or when a field is out of range.
+// config file is missing, or when a field is out of range. Empty Language
+// means "auto-detect from OS locale" — resolved at runtime.
 func Defaults() Settings {
-	return Settings{FontSize: 12}
+	return Settings{FontSize: 12, Language: ""}
 }
 
 func configPath() (string, error) {
@@ -77,6 +79,9 @@ func Sanitize(s Settings) Settings {
 	}
 	if s.FontSize > 24 {
 		s.FontSize = 24
+	}
+	if s.Language != "en" && s.Language != "ja" {
+		s.Language = ""
 	}
 	return s
 }

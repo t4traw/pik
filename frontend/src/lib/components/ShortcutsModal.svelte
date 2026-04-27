@@ -1,41 +1,42 @@
 <script lang="ts">
   import { appStore } from '../stores/app.svelte'
+  import { t } from '../i18n/index.svelte'
   import Icon from './Icon.svelte'
 
-  type Row = { keys: string[]; desc: string }
-  type Section = { title: string; rows: Row[] }
+  type Row = { keys: string[]; descKey: Parameters<typeof t>[0] }
+  type Section = { titleKey: Parameters<typeof t>[0]; rows: Row[] }
 
   const sections: Section[] = [
     {
-      title: 'ナビゲーション',
+      titleKey: 'shortcuts.section.navigation',
       rows: [
-        { keys: ['↑', 'Ctrl', 'P'], desc: '前のファイル' },
-        { keys: ['↓', 'Ctrl', 'N'], desc: '次のファイル' },
-        { keys: ['←', 'Ctrl', 'B'], desc: 'ステージ側へ' },
-        { keys: ['→', 'Ctrl', 'F'], desc: '未ステージ側へ' },
-        { keys: ['Tab'], desc: 'パネル巡回 (ファイル → Diff → コミット欄)' },
-        { keys: ['Shift', 'Tab'], desc: '逆方向にパネル巡回' },
+        { keys: ['↑', 'Ctrl', 'P'], descKey: 'shortcuts.row.prevFile' },
+        { keys: ['↓', 'Ctrl', 'N'], descKey: 'shortcuts.row.nextFile' },
+        { keys: ['←', 'Ctrl', 'B'], descKey: 'shortcuts.row.toStaged' },
+        { keys: ['→', 'Ctrl', 'F'], descKey: 'shortcuts.row.toUnstaged' },
+        { keys: ['Tab'], descKey: 'shortcuts.row.cyclePanels' },
+        { keys: ['Shift', 'Tab'], descKey: 'shortcuts.row.cyclePanelsReverse' },
       ],
     },
     {
-      title: 'ファイル操作',
+      titleKey: 'shortcuts.section.fileOps',
       rows: [
-        { keys: ['Space'], desc: 'ステージ / アンステージをトグル' },
-        { keys: ['D'], desc: '変更を破棄 / 未追跡ファイルを削除' },
+        { keys: ['Space'], descKey: 'shortcuts.row.toggleStage' },
+        { keys: ['D'], descKey: 'shortcuts.row.discardOrDelete' },
       ],
     },
     {
-      title: 'コミット',
+      titleKey: 'shortcuts.section.commit',
       rows: [
-        { keys: ['⌘', 'Enter'], desc: 'コミット' },
-        { keys: ['⌘', 'Shift', 'Enter'], desc: 'コミット欄にフォーカス + Claude で生成' },
+        { keys: ['⌘', 'Enter'], descKey: 'shortcuts.row.commit' },
+        { keys: ['⌘', 'Shift', 'Enter'], descKey: 'shortcuts.row.focusAndGenerate' },
       ],
     },
     {
-      title: '編集履歴',
+      titleKey: 'shortcuts.section.history',
       rows: [
-        { keys: ['⌘', 'Z'], desc: '元に戻す' },
-        { keys: ['⌘', 'Shift', 'Z'], desc: 'やり直し' },
+        { keys: ['⌘', 'Z'], descKey: 'shortcuts.row.undo' },
+        { keys: ['⌘', 'Shift', 'Z'], descKey: 'shortcuts.row.redo' },
       ],
     },
   ]
@@ -56,7 +57,7 @@
     class="fixed inset-0 z-40 bg-black/60"
     role="button"
     tabindex="-1"
-    aria-label="ショートカット一覧を閉じる"
+    aria-label={t('shortcuts.closeAria')}
     onclick={close}
     onkeydown={(e) => e.key === 'Enter' && close()}
   ></div>
@@ -65,7 +66,7 @@
     class="fixed inset-0 z-50 flex items-center justify-center pointer-events-none"
     role="dialog"
     aria-modal="true"
-    aria-label="キーボードショートカット"
+    aria-label={t('shortcuts.title')}
   >
     <div
       class="pointer-events-auto w-[460px] max-h-[80vh] flex flex-col rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-soft)] shadow-xl"
@@ -73,10 +74,10 @@
       <div
         class="flex items-center justify-between px-4 py-2 border-b border-[var(--color-border)]"
       >
-        <span class="text-sm font-semibold">キーボードショートカット</span>
+        <span class="text-sm font-semibold">{t('shortcuts.title')}</span>
         <button
           type="button"
-          aria-label="閉じる"
+          aria-label={t('settings.close')}
           class="w-6 h-6 flex items-center justify-center rounded text-[var(--color-fg-muted)] hover:text-white hover:bg-[var(--color-bg-softer)]"
           onclick={close}
         >
@@ -90,7 +91,7 @@
             <div
               class="text-[11px] font-semibold tracking-wider text-[var(--color-fg-muted)] mb-2"
             >
-              {sec.title.toUpperCase()}
+              {t(sec.titleKey).toUpperCase()}
             </div>
             <ul class="space-y-1.5">
               {#each sec.rows as row}
@@ -107,7 +108,7 @@
                       </kbd>
                     {/each}
                   </span>
-                  <span class="text-[var(--color-fg)] flex-1">{row.desc}</span>
+                  <span class="text-[var(--color-fg)] flex-1">{t(row.descKey)}</span>
                 </li>
               {/each}
             </ul>
@@ -115,7 +116,7 @@
         {/each}
 
         <div class="text-[11px] text-[var(--color-fg-dim)] pt-2 border-t border-[var(--color-border)]">
-          テキスト入力中は Space / D / 矢印 はタイピングが優先されます。
+          {t('shortcuts.note')}
         </div>
       </div>
     </div>

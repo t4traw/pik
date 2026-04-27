@@ -17,10 +17,12 @@ import {
   GetSettings,
   UpdateSettings,
   GenerateCommitMessage,
+  DetectLocale,
 } from '../../../wailsjs/go/main/App'
+import { i18n, t, type Locale, type LocalePref } from '../i18n/index.svelte'
 
 type UndoInfo = { canUndo: boolean; canRedo: boolean; undoDesc: string; redoDesc: string }
-export type Settings = { fontSize: number }
+export type Settings = { fontSize: number; language: LocalePref }
 
 class AppStore {
   info = $state<RepoInfo>({ root: '', branch: '' })
@@ -40,7 +42,7 @@ class AppStore {
 
   undo_ = $state<UndoInfo>({ canUndo: false, canRedo: false, undoDesc: '', redoDesc: '' })
 
-  settings = $state<Settings>({ fontSize: 12 })
+  settings = $state<Settings>({ fontSize: 12, language: '' })
   settingsOpen = $state<boolean>(false)
   shortcutsOpen = $state<boolean>(false)
 
@@ -191,8 +193,8 @@ class AppStore {
     const f = this.selectedFile
     if (!f || this.selectedStaged) return
     const msg = f.Untracked
-      ? `未追跡ファイルを削除する？\n${f.Path}`
-      : `変更を破棄する？\n${f.Path}`
+      ? t('fileList.confirmDeleteUntracked', { path: f.Path })
+      : t('fileList.confirmDiscardChanges', { path: f.Path })
     if (confirm(msg)) await this.discard(f.Path, f.Untracked)
   }
 
@@ -236,7 +238,7 @@ class AppStore {
     if (!this.selectedPath || this.selectedStaged) return
     const hunks = this.buildSelectionPatch()
     if (hunks.length === 0) {
-      this.status = '選択行なし'
+      this.status = t('status.noLineSelected')
       return
     }
     await this.guard(() => StageLines(this.selectedPath, hunks as any))
@@ -246,7 +248,7 @@ class AppStore {
     if (!this.selectedPath || !this.selectedStaged) return
     const hunks = this.buildSelectionPatch()
     if (hunks.length === 0) {
-      this.status = '選択行なし'
+      this.status = t('status.noLineSelected')
       return
     }
     await this.guard(() => UnstageLines(this.selectedPath, hunks as any))
@@ -255,13 +257,13 @@ class AppStore {
   async commit() {
     const m = this.commitMsg.trim()
     if (!m) {
-      this.status = 'コミットメッセージを入力してね'
+      this.status = t('status.commitMessageRequired')
       return
     }
     try {
       await Commit(m)
       this.commitMsg = ''
-      this.status = 'コミット完了'
+      this.status = t('status.commitDone')
       await this.refresh()
     } catch (e: any) {
       this.status = `commit error: ${e?.message ?? e}`
@@ -272,10 +274,10 @@ class AppStore {
     try {
       const desc = await Undo()
       if (!desc) {
-        this.status = '戻せる操作はありません'
+        this.status = t('status.nothingToUndo')
         return
       }
-      this.status = `元に戻しました: ${desc}`
+      this.status = t('status.undid', { desc })
       await this.refresh()
     } catch (e: any) {
       this.status = `undo error: ${e?.message ?? e}`
@@ -286,19 +288,30 @@ class AppStore {
     try {
       const desc = await Redo()
       if (!desc) {
-        this.status = 'やり直す操作はありません'
+        this.status = t('status.nothingToRedo')
         return
       }
-      this.status = `やり直しました: ${desc}`
+      this.status = t('status.redid', { desc })
       await this.refresh()
     } catch (e: any) {
       this.status = `redo error: ${e?.message ?? e}`
     }
   }
 
+  private async resolveLocale(pref: LocalePref): Promise<Locale> {
+    if (pref === 'en' || pref === 'ja') return pref
+    try {
+      const detected = await DetectLocale()
+      return detected === 'ja' ? 'ja' : 'en'
+    } catch {
+      return 'en'
+    }
+  }
+
   async loadSettings() {
     try {
-      this.settings = (await GetSettings()) ?? this.settings
+      this.settings = ((await GetSettings()) as unknown as Settings) ?? this.settings
+      i18n.set(await this.resolveLocale(this.settings.language))
     } catch (e: any) {
       this.status = `settings load error: ${e?.message ?? e}`
     }
@@ -306,7 +319,8 @@ class AppStore {
 
   async saveSettings(next: Settings) {
     try {
-      this.settings = (await UpdateSettings(next as any)) ?? next
+      this.settings = ((await UpdateSettings(next as any)) as unknown as Settings) ?? next
+      i18n.set(await this.resolveLocale(this.settings.language))
     } catch (e: any) {
       this.status = `settings save error: ${e?.message ?? e}`
     }
@@ -315,16 +329,16 @@ class AppStore {
   async generateCommitMessage() {
     if (this.generating) return
     if (this.stagedFiles.length === 0) {
-      this.status = 'ステージ済みの変更がないよ'
+      this.status = t('status.noStagedChanges')
       return
     }
     this.generating = true
-    this.status = 'claude で生成中…'
+    this.status = t('status.generating')
     try {
       const msg = await GenerateCommitMessage()
       if (msg) {
         this.commitMsg = msg
-        this.status = '生成完了'
+        this.status = t('status.generated')
       }
     } catch (e: any) {
       this.status = `${e?.message ?? e}`

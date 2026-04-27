@@ -243,6 +243,7 @@ export namespace settings {
 	
 	export class Settings {
 	    fontSize: number;
+	    language: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Settings(source);
@@ -251,6 +252,7 @@ export namespace settings {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.fontSize = source["fontSize"];
+	        this.language = source["language"];
 	    }
 	}
 

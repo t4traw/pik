@@ -168,19 +168,19 @@ func (a *App) indexSnapshot(desc string, apply func() error) error {
 // ---- mutations ----
 
 func (a *App) Stage(path string) error {
-	return a.indexSnapshot("ステージ: "+path, func() error { return a.repo.Stage(path) })
+	return a.indexSnapshot("Stage: "+path, func() error { return a.repo.Stage(path) })
 }
 
 func (a *App) Unstage(path string) error {
-	return a.indexSnapshot("アンステージ: "+path, func() error { return a.repo.Unstage(path) })
+	return a.indexSnapshot("Unstage: "+path, func() error { return a.repo.Unstage(path) })
 }
 
 func (a *App) StageAll() error {
-	return a.indexSnapshot("全ステージ", func() error { return a.repo.StageAll() })
+	return a.indexSnapshot("Stage all", func() error { return a.repo.StageAll() })
 }
 
 func (a *App) UnstageAll() error {
-	return a.indexSnapshot("全アンステージ", func() error { return a.repo.UnstageAll() })
+	return a.indexSnapshot("Unstage all", func() error { return a.repo.UnstageAll() })
 }
 
 // StageLines applies only the selected lines of the given hunks to the index.
@@ -194,7 +194,7 @@ func (a *App) StageLines(path string, hunks []git.PatchHunk) error {
 	if err := apply(); err != nil {
 		return err
 	}
-	a.push(undoOp{Desc: "行ステージ: " + path, Undo: reverse, Redo: apply})
+	a.push(undoOp{Desc: "Stage lines: " + path, Undo: reverse, Redo: apply})
 	return nil
 }
 
@@ -209,7 +209,7 @@ func (a *App) UnstageLines(path string, hunks []git.PatchHunk) error {
 	if err := apply(); err != nil {
 		return err
 	}
-	a.push(undoOp{Desc: "行アンステージ: " + path, Undo: reverse, Redo: apply})
+	a.push(undoOp{Desc: "Unstage lines: " + path, Undo: reverse, Redo: apply})
 	return nil
 }
 
@@ -231,7 +231,7 @@ func (a *App) Discard(path string, untracked bool) error {
 		return err
 	}
 	a.push(undoOp{
-		Desc: "破棄: " + path,
+		Desc: "Discard: " + path,
 		Undo: func() error {
 			if err := os.MkdirAll(filepath.Dir(full), 0755); err != nil {
 				return err
@@ -263,7 +263,7 @@ func (a *App) GenerateCommitMessage() (string, error) {
 		return "", err
 	}
 	if strings.TrimSpace(diff) == "" {
-		return "", fmt.Errorf("ステージ済みの変更がありません")
+		return "", fmt.Errorf("no staged changes")
 	}
 
 	parent := a.ctx
@@ -282,12 +282,12 @@ func (a *App) GenerateCommitMessage() (string, error) {
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
 		if errors.Is(err, exec.ErrNotFound) {
-			return "", fmt.Errorf("claude CLI が見つかりません。Claude Code をインストールしてください")
+			return "", fmt.Errorf("claude CLI not found; install Claude Code")
 		}
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-			return "", fmt.Errorf("claude の応答がタイムアウトしました (60秒)")
+			return "", fmt.Errorf("claude timed out (60s)")
 		}
-		return "", fmt.Errorf("claude 実行エラー: %w: %s", err, strings.TrimSpace(stderr.String()))
+		return "", fmt.Errorf("claude failed: %w: %s", err, strings.TrimSpace(stderr.String()))
 	}
 	msg := strings.TrimSpace(stdout.String())
 	// Occasionally the model wraps the line in backticks despite instructions.
@@ -312,6 +312,23 @@ func (a *App) UpdateSettings(s settings.Settings) (settings.Settings, error) {
 	return settings.Sanitize(s), nil
 }
 
+// DetectLocale returns the UI locale ("en" or "ja") inferred from the OS
+// environment. Used as the fallback when settings.Language is empty.
+// Default is "en" — Japanese only when LANG/LC_* explicitly says ja.
+func (a *App) DetectLocale() string {
+	for _, k := range []string{"LC_ALL", "LC_MESSAGES", "LANG"} {
+		v := os.Getenv(k)
+		if v == "" {
+			continue
+		}
+		if strings.HasPrefix(strings.ToLower(v), "ja") {
+			return "ja"
+		}
+		return "en"
+	}
+	return "en"
+}
+
 // Commit creates a new commit and records the pre-commit HEAD so undo can
 // soft-reset back. Empty pre-HEAD means this was the initial commit.
 func (a *App) Commit(msg string) error {
@@ -323,7 +340,7 @@ func (a *App) Commit(msg string) error {
 		return err
 	}
 	a.push(undoOp{
-		Desc: "コミット: " + msg,
+		Desc: "Commit: " + msg,
 		Undo: func() error {
 			// Refuse to rewind past a commit that's already on a remote —
 			// undoing it locally would diverge from origin and require a
@@ -337,7 +354,7 @@ func (a *App) Commit(msg string) error {
 				return err
 			}
 			if len(remotes) > 0 {
-				return fmt.Errorf("push 済みのため取り消せません (%s)", strings.Join(remotes, ", "))
+				return fmt.Errorf("already pushed (%s); cannot undo", strings.Join(remotes, ", "))
 			}
 			return a.repo.ResetSoft(prev)
 		},
