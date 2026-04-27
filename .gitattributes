@@ -1,0 +1,6 @@
+# GitHub の言語統計は Go バックエンドを主言語として表示させる。
+# frontend (Svelte/TS) は統計から外すが、PR の diff は通常通り表示。
+frontend/** linguist-detectable=false
+
+# Wails が自動生成する TypeScript バインディング。
+frontend/wailsjs/** linguist-generated=true
