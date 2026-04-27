@@ -73,8 +73,16 @@ func relaunchDetached() bool {
 	if os.Getenv("PIK_NO_RELAUNCH") != "" {
 		return false
 	}
-	// No TTY → we're already launched by LaunchServices; don't loop.
-	stat, err := os.Stdout.Stat()
+	// LaunchServices always sets __CFBundleIdentifier when launching a .app
+	// (including via `open -na`). If it's set we're the relaunched child —
+	// returning here is what stops the open→spawn→open infinite loop that
+	// shows up when the Homebrew shim `exec`s us with the parent shell's TTY
+	// still attached (so the stdin/stdout TTY check below isn't enough).
+	if os.Getenv("__CFBundleIdentifier") != "" {
+		return false
+	}
+	// No controlling TTY on stdin → not invoked from a shell, nothing to do.
+	stat, err := os.Stdin.Stat()
 	if err != nil || stat.Mode()&os.ModeCharDevice == 0 {
 		return false
 	}
