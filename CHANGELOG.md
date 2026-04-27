@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.4](https://github.com/t4traw/pik/compare/v0.1.3...v0.1.4) (2026-04-27)
+
+
+### Bug Fixes
+
+* Homebrew 経由起動時の無限再起動ループを修正 ([eed7cb0](https://github.com/t4traw/pik/commit/eed7cb0a4a853d5b08e93a414239635dee418463))
+
 ## [0.1.3](https://github.com/t4traw/pik/compare/v0.1.2...v0.1.3) (2026-04-24)
 
 
