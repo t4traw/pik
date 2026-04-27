@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.5](https://github.com/t4traw/pik/compare/v0.1.4...v0.1.5) (2026-04-27)
+
+
+### Features
+
+* 多言語対応 (英語/日本語、デフォルト英語) ([eed808d](https://github.com/t4traw/pik/commit/eed808da3b15374006419783ea2132bfe9f1226d))
+
+
+### Bug Fixes
+
+* ターミナル起動時に GUI が detach されない問題を修正 ([172a307](https://github.com/t4traw/pik/commit/172a307250e3eb3b2aaaa61062272ac9675f4e77))
+
 ## [0.1.4](https://github.com/t4traw/pik/compare/v0.1.3...v0.1.4) (2026-04-27)
 
 
