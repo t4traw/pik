@@ -73,12 +73,19 @@ func relaunchDetached() bool {
 	if os.Getenv("PIK_NO_RELAUNCH") != "" {
 		return false
 	}
-	// LaunchServices always sets __CFBundleIdentifier when launching a .app
-	// (including via `open -na`). If it's set we're the relaunched child —
-	// returning here is what stops the open→spawn→open infinite loop that
-	// shows up when the Homebrew shim `exec`s us with the parent shell's TTY
-	// still attached (so the stdin/stdout TTY check below isn't enough).
-	if os.Getenv("__CFBundleIdentifier") != "" {
+	// LaunchServices sets __CFBundleIdentifier to the launched app's bundle ID
+	// when it spawns a .app (including via `open -na`). If it matches *ours*,
+	// we're the relaunched child — returning here is what stops the
+	// open→spawn→open infinite loop that shows up when the Homebrew shim
+	// `exec`s us with the parent shell's TTY still attached.
+	//
+	// We can't just check for non-empty: when the user launches their terminal
+	// from Finder/Spotlight/Dock, the terminal's own bundle ID (e.g.
+	// com.apple.Terminal, com.googlecode.iterm2) is exported into the
+	// environment and inherited by every child — including us. Bare presence
+	// would then make us skip the relaunch and leave the GUI attached to the
+	// shell.
+	if os.Getenv("__CFBundleIdentifier") == "com.wails.pik" {
 		return false
 	}
 	// No controlling TTY on stdin → not invoked from a shell, nothing to do.
