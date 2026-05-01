@@ -330,6 +330,22 @@ func (r *Repo) PullFFOnly() error {
 	return err
 }
 
+// PullRebase rebases the local commits on top of upstream. Used by Sync
+// when ahead and behind both > 0 (diverged but not yet conflicting).
+// On rebase conflict, git leaves the repo mid-rebase — the caller should
+// run RebaseAbort to restore a clean state before reporting the error.
+func (r *Repo) PullRebase() error {
+	_, err := r.run("pull", "--rebase")
+	return err
+}
+
+// RebaseAbort restores the working tree to the state before the rebase.
+// Safe to call when no rebase is in progress (no-op).
+func (r *Repo) RebaseAbort() {
+	// Ignore errors — this is a best-effort cleanup.
+	_, _ = r.runAllow([]int{1, 128}, "rebase", "--abort")
+}
+
 func (r *Repo) hasRemote() bool {
 	out, err := r.run("remote")
 	if err != nil {

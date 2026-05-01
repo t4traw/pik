@@ -347,7 +347,17 @@ func (a *App) Sync() (string, error) {
 		return "upstream set, pushed", nil
 	}
 	if behind > 0 && ahead > 0 {
-		return "", fmt.Errorf("diverged (%d behind, %d ahead); resolve in terminal", behind, ahead)
+		// Diverged but no conflicts yet — rebase local on top of upstream,
+		// then push. If rebase hits a conflict, abort to restore a clean
+		// state and tell the user to resolve in a terminal.
+		if err := a.repo.PullRebase(); err != nil {
+			a.repo.RebaseAbort()
+			return "", fmt.Errorf("rebase conflict; resolve in terminal: %w", err)
+		}
+		if err := a.repo.Push(); err != nil {
+			return "", fmt.Errorf("push: %w", err)
+		}
+		return fmt.Sprintf("rebased %d on %d, pushed", ahead, behind), nil
 	}
 	if behind > 0 {
 		if err := a.repo.PullFFOnly(); err != nil {
