@@ -1,8 +1,10 @@
 export const en = {
-  'titleBar.refresh': 'Refresh',
   'titleBar.shortcutsAria': 'Keyboard shortcuts',
   'titleBar.shortcutsTitle': 'Keyboard shortcuts (?)',
   'titleBar.settingsAria': 'Settings',
+  'titleBar.syncAria': 'Sync with remote',
+  'titleBar.syncTitle': 'Fetch + pull (ff-only) + push (⌘⇧↑)',
+  'titleBar.aheadBehind': '{ahead} ahead, {behind} behind',
 
   'fileList.stagedChanges': 'STAGED CHANGES',
   'fileList.changes': 'CHANGES',
@@ -46,6 +48,7 @@ export const en = {
   'shortcuts.section.fileOps': 'File operations',
   'shortcuts.section.commit': 'Commit',
   'shortcuts.section.history': 'History',
+  'shortcuts.section.remote': 'Remote',
   'shortcuts.row.prevFile': 'Previous file',
   'shortcuts.row.nextFile': 'Next file',
   'shortcuts.row.toStaged': 'Jump to staged side',
@@ -58,6 +61,7 @@ export const en = {
   'shortcuts.row.focusAndGenerate': 'Focus commit box + generate with Claude',
   'shortcuts.row.undo': 'Undo',
   'shortcuts.row.redo': 'Redo',
+  'shortcuts.row.sync': 'Sync with remote (fetch + pull + push)',
   'shortcuts.note': 'Space / D / arrow keys yield to text input while typing.',
 
   'status.noLineSelected': 'No lines selected',
@@ -70,4 +74,6 @@ export const en = {
   'status.noStagedChanges': 'No staged changes',
   'status.generating': 'Generating with claude…',
   'status.generated': 'Generated',
+  'status.syncing': 'Syncing…',
+  'status.syncDone': 'Sync: {summary}',
 } as const

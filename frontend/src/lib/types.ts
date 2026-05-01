@@ -43,6 +43,9 @@ export interface DiffResult {
 export interface RepoInfo {
   root: string
   branch: string
+  ahead: number
+  behind: number
+  hasUpstream: boolean
 }
 
 // For line-level staging.

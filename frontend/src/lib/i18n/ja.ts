@@ -3,10 +3,12 @@ import type { en } from './en'
 type Dict = { [K in keyof typeof en]: string }
 
 export const ja: Dict = {
-  'titleBar.refresh': '更新',
   'titleBar.shortcutsAria': 'キーボードショートカット',
   'titleBar.shortcutsTitle': 'キーボードショートカット (?)',
   'titleBar.settingsAria': '設定',
+  'titleBar.syncAria': 'リモートと同期',
+  'titleBar.syncTitle': 'fetch + pull (ff-only) + push (⌘⇧↑)',
+  'titleBar.aheadBehind': '{ahead}先行 / {behind}遅れ',
 
   'fileList.stagedChanges': 'STAGED CHANGES',
   'fileList.changes': 'CHANGES',
@@ -50,6 +52,7 @@ export const ja: Dict = {
   'shortcuts.section.fileOps': 'ファイル操作',
   'shortcuts.section.commit': 'コミット',
   'shortcuts.section.history': '編集履歴',
+  'shortcuts.section.remote': 'リモート',
   'shortcuts.row.prevFile': '前のファイル',
   'shortcuts.row.nextFile': '次のファイル',
   'shortcuts.row.toStaged': 'ステージ側へ',
@@ -62,6 +65,7 @@ export const ja: Dict = {
   'shortcuts.row.focusAndGenerate': 'コミット欄にフォーカス + Claude で生成',
   'shortcuts.row.undo': '元に戻す',
   'shortcuts.row.redo': 'やり直し',
+  'shortcuts.row.sync': 'リモート同期 (fetch + pull + push)',
   'shortcuts.note': 'テキスト入力中は Space / D / 矢印 はタイピングが優先されます。',
 
   'status.noLineSelected': '選択行なし',
@@ -74,4 +78,6 @@ export const ja: Dict = {
   'status.noStagedChanges': 'ステージ済みの変更がないよ',
   'status.generating': 'claude で生成中…',
   'status.generated': '生成完了',
+  'status.syncing': '同期中…',
+  'status.syncDone': '同期: {summary}',
 }

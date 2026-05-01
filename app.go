@@ -46,12 +46,22 @@ func (a *App) startup(ctx context.Context) {
 // ---- read-only info ----
 
 type RepoInfo struct {
-	Root   string `json:"root"`
-	Branch string `json:"branch"`
+	Root        string `json:"root"`
+	Branch      string `json:"branch"`
+	Ahead       int    `json:"ahead"`
+	Behind      int    `json:"behind"`
+	HasUpstream bool   `json:"hasUpstream"`
 }
 
 func (a *App) Info() RepoInfo {
-	return RepoInfo{Root: a.repo.Root, Branch: a.repo.Branch()}
+	ahead, behind, hasUp, _ := a.repo.AheadBehind()
+	return RepoInfo{
+		Root:        a.repo.Root,
+		Branch:      a.repo.Branch(),
+		Ahead:       ahead,
+		Behind:      behind,
+		HasUpstream: hasUp,
+	}
 }
 
 func (a *App) Status() ([]git.FileStatus, error) {
@@ -310,6 +320,48 @@ func (a *App) UpdateSettings(s settings.Settings) (settings.Settings, error) {
 		return settings.Defaults(), err
 	}
 	return settings.Sanitize(s), nil
+}
+
+// Fetch pulls remote refs without touching local state. Cheap to call —
+// useful for refreshing the ahead/behind indicator on focus.
+func (a *App) Fetch() error {
+	return a.repo.Fetch()
+}
+
+// Sync orchestrates the standard remote-update flow: fetch, then ff-pull
+// when behind, then push when ahead. Returns a short human-readable summary.
+// Failures bubble up as errors — pik does not attempt to resolve diverged
+// branches; the user is expected to drop to a terminal for that.
+func (a *App) Sync() (string, error) {
+	if err := a.repo.Fetch(); err != nil {
+		return "", fmt.Errorf("fetch: %w", err)
+	}
+	ahead, behind, hasUp, err := a.repo.AheadBehind()
+	if err != nil {
+		return "", err
+	}
+	if !hasUp {
+		if err := a.repo.Push(); err != nil {
+			return "", fmt.Errorf("push: %w", err)
+		}
+		return "upstream set, pushed", nil
+	}
+	if behind > 0 && ahead > 0 {
+		return "", fmt.Errorf("diverged (%d behind, %d ahead); resolve in terminal", behind, ahead)
+	}
+	if behind > 0 {
+		if err := a.repo.PullFFOnly(); err != nil {
+			return "", fmt.Errorf("pull: %w", err)
+		}
+		return fmt.Sprintf("pulled %d", behind), nil
+	}
+	if ahead > 0 {
+		if err := a.repo.Push(); err != nil {
+			return "", fmt.Errorf("push: %w", err)
+		}
+		return fmt.Sprintf("pushed %d", ahead), nil
+	}
+	return "up to date", nil
 }
 
 // DetectLocale returns the UI locale ("en" or "ja") inferred from the OS

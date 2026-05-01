@@ -12,6 +12,8 @@ export function Diff(arg1:string,arg2:boolean,arg3:boolean):Promise<main.DiffRes
 
 export function Discard(arg1:string,arg2:boolean):Promise<void>;
 
+export function Fetch():Promise<void>;
+
 export function GenerateCommitMessage():Promise<string>;
 
 export function GetSettings():Promise<settings.Settings>;
@@ -27,6 +29,8 @@ export function StageAll():Promise<void>;
 export function StageLines(arg1:string,arg2:Array<git.PatchHunk>):Promise<void>;
 
 export function Status():Promise<Array<git.FileStatus>>;
+
+export function Sync():Promise<string>;
 
 export function Undo():Promise<string>;
 

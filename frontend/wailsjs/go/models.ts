@@ -207,6 +207,9 @@ export namespace main {
 	export class RepoInfo {
 	    root: string;
 	    branch: string;
+	    ahead: number;
+	    behind: number;
+	    hasUpstream: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new RepoInfo(source);
@@ -216,6 +219,9 @@ export namespace main {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.root = source["root"];
 	        this.branch = source["branch"];
+	        this.ahead = source["ahead"];
+	        this.behind = source["behind"];
+	        this.hasUpstream = source["hasUpstream"];
 	    }
 	}
 	export class UndoState {

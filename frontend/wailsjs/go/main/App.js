@@ -18,6 +18,10 @@ export function Discard(arg1, arg2) {
   return window['go']['main']['App']['Discard'](arg1, arg2);
 }
 
+export function Fetch() {
+  return window['go']['main']['App']['Fetch']();
+}
+
 export function GenerateCommitMessage() {
   return window['go']['main']['App']['GenerateCommitMessage']();
 }
@@ -48,6 +52,10 @@ export function StageLines(arg1, arg2) {
 
 export function Status() {
   return window['go']['main']['App']['Status']();
+}
+
+export function Sync() {
+  return window['go']['main']['App']['Sync']();
 }
 
 export function Undo() {

@@ -39,6 +39,12 @@
         { keys: ['⌘', 'Shift', 'Z'], descKey: 'shortcuts.row.redo' },
       ],
     },
+    {
+      titleKey: 'shortcuts.section.remote',
+      rows: [
+        { keys: ['⌘', 'Shift', '↑'], descKey: 'shortcuts.row.sync' },
+      ],
+    },
   ]
 
   function close() {

@@ -78,6 +78,13 @@
         return
       }
 
+      // Cmd/Ctrl + Shift + ↑: sync with remote (fetch + ff-pull + push).
+      if (mod && e.shiftKey && e.key === 'ArrowUp') {
+        e.preventDefault()
+        appStore.sync()
+        return
+      }
+
       // Cmd/Ctrl + Enter: commit. Inside the textarea the component's own
       // handler already fires, so skip here to avoid a double-commit.
       if (mod && !e.shiftKey && e.key === 'Enter') {
@@ -142,14 +149,29 @@
       <Icon name="branch" size={14} />
       <span>{appStore.info.branch || '—'}</span>
     </span>
+    {#if appStore.info.hasUpstream && (appStore.info.ahead > 0 || appStore.info.behind > 0)}
+      <span
+        class="shrink-0 flex items-center gap-1 text-[11px] tabular-nums text-[var(--color-fg-muted)]"
+        title={t('titleBar.aheadBehind', { ahead: appStore.info.ahead, behind: appStore.info.behind })}
+      >
+        {#if appStore.info.ahead > 0}<span class="text-emerald-300">↑{appStore.info.ahead}</span>{/if}
+        {#if appStore.info.behind > 0}<span class="text-amber-300">↓{appStore.info.behind}</span>{/if}
+      </span>
+    {/if}
     <span class="text-[var(--color-fg-muted)] truncate flex-1 min-w-0">{appStore.info.root}</span>
     <button
       type="button"
-      aria-label={t('titleBar.refresh')}
-      class="shrink-0 w-7 h-7 flex items-center justify-center rounded text-[var(--color-fg-muted)] hover:text-white hover:bg-[var(--color-bg-softer)] transition-colors"
+      aria-label={t('titleBar.syncAria')}
+      title={t('titleBar.syncTitle')}
+      class="shrink-0 w-7 h-7 flex items-center justify-center rounded text-[var(--color-fg-muted)] hover:text-white hover:bg-[var(--color-bg-softer)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
       style="--wails-draggable: no-drag;"
-      onclick={() => appStore.refresh()}>
-      <Icon name="refresh" size={15} />
+      disabled={appStore.syncing}
+      onclick={() => appStore.sync()}>
+      {#if appStore.syncing}
+        <span class="inline-block w-3 h-3 rounded-full border-2 border-current border-t-transparent animate-spin"></span>
+      {:else}
+        <Icon name="refresh" size={15} />
+      {/if}
     </button>
     <button
       type="button"

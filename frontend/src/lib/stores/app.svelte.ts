@@ -18,6 +18,7 @@ import {
   UpdateSettings,
   GenerateCommitMessage,
   DetectLocale,
+  Sync,
 } from '../../../wailsjs/go/main/App'
 import { i18n, t, type Locale, type LocalePref } from '../i18n/index.svelte'
 
@@ -25,7 +26,8 @@ type UndoInfo = { canUndo: boolean; canRedo: boolean; undoDesc: string; redoDesc
 export type Settings = { fontSize: number; language: LocalePref }
 
 class AppStore {
-  info = $state<RepoInfo>({ root: '', branch: '' })
+  info = $state<RepoInfo>({ root: '', branch: '', ahead: 0, behind: 0, hasUpstream: false })
+  syncing = $state<boolean>(false)
   files = $state<FileStatus[]>([])
 
   selectedPath = $state<string>('')
@@ -323,6 +325,21 @@ class AppStore {
       i18n.set(await this.resolveLocale(this.settings.language))
     } catch (e: any) {
       this.status = `settings save error: ${e?.message ?? e}`
+    }
+  }
+
+  async sync() {
+    if (this.syncing) return
+    this.syncing = true
+    this.status = t('status.syncing')
+    try {
+      const summary = await Sync()
+      this.status = t('status.syncDone', { summary })
+      await this.refresh()
+    } catch (e: any) {
+      this.status = `${e?.message ?? e}`
+    } finally {
+      this.syncing = false
     }
   }
 

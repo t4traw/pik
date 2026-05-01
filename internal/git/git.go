@@ -281,3 +281,59 @@ func (r *Repo) ResetSoft(sha string) error {
 	_, err := r.run("reset", "--soft", sha)
 	return err
 }
+
+// Fetch updates remote-tracking branches without touching local state.
+// Safe to call on any repo (no-op if no remotes are configured).
+func (r *Repo) Fetch() error {
+	if !r.hasRemote() {
+		return nil
+	}
+	_, err := r.run("fetch", "--all", "--prune")
+	return err
+}
+
+// AheadBehind returns how many commits HEAD is ahead/behind its upstream.
+// hasUpstream is false when the current branch has no @{u} configured —
+// in that case ahead/behind are zero and the caller should offer
+// `push -u` to set upstream on first push.
+func (r *Repo) AheadBehind() (ahead, behind int, hasUpstream bool, err error) {
+	out, runErr := r.runAllow([]int{128}, "rev-list", "--left-right", "--count", "@{u}...HEAD")
+	if runErr != nil {
+		// Exit 128 = no upstream configured. Anything else is a real error.
+		return 0, 0, false, runErr
+	}
+	parts := strings.Fields(strings.TrimSpace(string(out)))
+	if len(parts) != 2 {
+		// No upstream → git prints nothing (we allowed exit 128).
+		return 0, 0, false, nil
+	}
+	fmt.Sscanf(parts[0], "%d", &behind)
+	fmt.Sscanf(parts[1], "%d", &ahead)
+	return ahead, behind, true, nil
+}
+
+// Push pushes the current branch to its upstream. If no upstream is set,
+// uses --set-upstream so the next push doesn't need to be told again.
+func (r *Repo) Push() error {
+	if _, _, hasUp, _ := r.AheadBehind(); !hasUp {
+		_, err := r.run("push", "--set-upstream", "origin", "HEAD")
+		return err
+	}
+	_, err := r.run("push")
+	return err
+}
+
+// PullFFOnly fast-forwards the current branch to its upstream. Refuses to
+// merge — if the branches have diverged, the user must resolve in a terminal.
+func (r *Repo) PullFFOnly() error {
+	_, err := r.run("pull", "--ff-only")
+	return err
+}
+
+func (r *Repo) hasRemote() bool {
+	out, err := r.run("remote")
+	if err != nil {
+		return false
+	}
+	return strings.TrimSpace(string(out)) != ""
+}
