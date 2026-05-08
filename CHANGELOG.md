@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.6](https://github.com/t4traw/pik/compare/v0.1.5...v0.1.6) (2026-05-08)
+
+
+### Features
+
+* diverged 時に rebase してから push するよう Sync を拡張 ([e3d7783](https://github.com/t4traw/pik/commit/e3d778314a1f8911bc71425e854584aaba2367d8))
+* コンフリクト解消用のモーダルとバックエンド API を追加 ([e2ab1ba](https://github.com/t4traw/pik/commit/e2ab1bae37d89db01641c6da5b04c8b7d8df3cf0))
+* リモートと同期するショートカットとボタンを追加 ([88cb444](https://github.com/t4traw/pik/commit/88cb444988f4a686111294ebd447b1c7b7c5b62b))
+
 ## [0.1.5](https://github.com/t4traw/pik/compare/v0.1.4...v0.1.5) (2026-04-27)
 
 
