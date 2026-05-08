@@ -8,10 +8,14 @@
   import Icon from './lib/components/Icon.svelte'
   import SettingsModal from './lib/components/SettingsModal.svelte'
   import ShortcutsModal from './lib/components/ShortcutsModal.svelte'
+  import ConflictsModal from './lib/components/ConflictsModal.svelte'
 
   onMount(() => {
     appStore.refresh()
     appStore.loadSettings()
+    // If pik is launched mid-rebase or after a failed sync, show the resolver
+    // immediately so the user isn't left wondering why nothing works.
+    appStore.loadConflicts({ openIfAny: true })
     const onFocus = () => appStore.refresh()
     const PANEL_IDS = ['pik-panel-files', 'pik-panel-diff', 'pik-panel-commit'] as const
 
@@ -53,7 +57,7 @@
       // Any modal open → swallow everything except Undo/Redo so shortcuts
       // don't mutate the file behind the dialog. Esc close is owned by the
       // modal component itself.
-      if (appStore.settingsOpen || appStore.shortcutsOpen) {
+      if (appStore.settingsOpen || appStore.shortcutsOpen || appStore.conflictsOpen) {
         if (mod && k === 'z') {
           e.preventDefault()
           if (e.shiftKey) appStore.redo()
@@ -158,6 +162,16 @@
         {#if appStore.info.behind > 0}<span class="text-amber-300">↓{appStore.info.behind}</span>{/if}
       </span>
     {/if}
+    {#if appStore.conflictFiles.length > 0}
+      <button
+        type="button"
+        class="shrink-0 flex items-center gap-1 px-2 py-0.5 rounded text-[11px] bg-rose-900/60 text-rose-200 hover:bg-rose-800 transition-colors"
+        style="--wails-draggable: no-drag;"
+        onclick={() => (appStore.conflictsOpen = true)}
+      >
+        ⚠ {appStore.conflictFiles.length} conflict{appStore.conflictFiles.length > 1 ? 's' : ''}
+      </button>
+    {/if}
     <span class="text-[var(--color-fg-muted)] truncate flex-1 min-w-0">{appStore.info.root}</span>
     <button
       type="button"
@@ -194,6 +208,7 @@
 
   <SettingsModal />
   <ShortcutsModal />
+  <ConflictsModal />
 
   <!-- Main split -->
   <div class="flex-1 grid overflow-hidden" style="grid-template-columns: minmax(260px, 340px) 1fr;">

@@ -1,4 +1,4 @@
-import type { FileStatus, FileDiff, RepoInfo, PatchHunk } from '../types'
+import type { FileStatus, FileDiff, RepoInfo, PatchHunk, ConflictFile, RebaseState } from '../types'
 import {
   Info,
   Status,
@@ -19,6 +19,13 @@ import {
   GenerateCommitMessage,
   DetectLocale,
   Sync,
+  Conflicts,
+  RebaseState as FetchRebaseState,
+  WriteResolved,
+  ResolveOurs,
+  ResolveTheirs,
+  ContinueRebase,
+  AbortRebase,
 } from '../../../wailsjs/go/main/App'
 import { i18n, t, type Locale, type LocalePref } from '../i18n/index.svelte'
 
@@ -47,6 +54,10 @@ class AppStore {
   settings = $state<Settings>({ fontSize: 12, language: '' })
   settingsOpen = $state<boolean>(false)
   shortcutsOpen = $state<boolean>(false)
+
+  conflictsOpen = $state<boolean>(false)
+  conflictFiles = $state<ConflictFile[]>([])
+  rebaseState = $state<RebaseState>({ rebasing: false, merging: false, step: 0, total: 0, head: '' })
 
   generating = $state<boolean>(false)
 
@@ -338,8 +349,78 @@ class AppStore {
       await this.refresh()
     } catch (e: any) {
       this.status = `${e?.message ?? e}`
+      // Check if a rebase is mid-conflict — open the resolver automatically.
+      await this.loadConflicts({ openIfAny: true })
     } finally {
       this.syncing = false
+    }
+  }
+
+  async loadConflicts(opts: { openIfAny?: boolean } = {}) {
+    try {
+      this.rebaseState = (await FetchRebaseState()) as unknown as RebaseState
+      this.conflictFiles = ((await Conflicts()) as unknown as ConflictFile[]) ?? []
+      if (opts.openIfAny && this.conflictFiles.length > 0) {
+        this.conflictsOpen = true
+      }
+    } catch (e: any) {
+      this.status = `conflicts load error: ${e?.message ?? e}`
+    }
+  }
+
+  async resolveFileWithContent(path: string, content: string) {
+    try {
+      await WriteResolved(path, content)
+      await this.loadConflicts()
+      await this.refresh()
+    } catch (e: any) {
+      this.status = `${e?.message ?? e}`
+    }
+  }
+
+  async resolveFileOurs(path: string) {
+    try {
+      await ResolveOurs(path)
+      await this.loadConflicts()
+      await this.refresh()
+    } catch (e: any) {
+      this.status = `${e?.message ?? e}`
+    }
+  }
+
+  async resolveFileTheirs(path: string) {
+    try {
+      await ResolveTheirs(path)
+      await this.loadConflicts()
+      await this.refresh()
+    } catch (e: any) {
+      this.status = `${e?.message ?? e}`
+    }
+  }
+
+  async continueRebase() {
+    try {
+      await ContinueRebase()
+      this.status = t('status.rebaseContinued')
+      this.conflictsOpen = false
+      await this.loadConflicts()
+      await this.refresh()
+    } catch (e: any) {
+      this.status = `${e?.message ?? e}`
+      // Conflicts may persist for the next rebase step — refresh.
+      await this.loadConflicts()
+    }
+  }
+
+  async abortRebase() {
+    try {
+      await AbortRebase()
+      this.status = t('status.rebaseAborted')
+      this.conflictsOpen = false
+      await this.loadConflicts()
+      await this.refresh()
+    } catch (e: any) {
+      this.status = `${e?.message ?? e}`
     }
   }
 

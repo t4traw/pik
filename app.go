@@ -374,6 +374,51 @@ func (a *App) Sync() (string, error) {
 	return "up to date", nil
 }
 
+// ---- conflict resolution ----
+
+func (a *App) RebaseState() (git.RebaseState, error) {
+	return a.repo.State()
+}
+
+func (a *App) Conflicts() ([]git.ConflictFile, error) {
+	paths, err := a.repo.Conflicts()
+	if err != nil {
+		return nil, err
+	}
+	out := make([]git.ConflictFile, 0, len(paths))
+	for _, p := range paths {
+		cf, err := a.repo.ParseConflictFile(p)
+		if err != nil {
+			// Don't fail the whole list because one file can't be parsed —
+			// the UI can still let the user resolve the rest.
+			out = append(out, git.ConflictFile{Path: p})
+			continue
+		}
+		out = append(out, cf)
+	}
+	return out, nil
+}
+
+func (a *App) WriteResolved(path, content string) error {
+	return a.repo.WriteResolved(path, content)
+}
+
+func (a *App) ResolveOurs(path string) error {
+	return a.repo.ResolveOurs(path)
+}
+
+func (a *App) ResolveTheirs(path string) error {
+	return a.repo.ResolveTheirs(path)
+}
+
+func (a *App) ContinueRebase() error {
+	return a.repo.ContinueRebase()
+}
+
+func (a *App) AbortRebase() error {
+	return a.repo.AbortRebase()
+}
+
 // DetectLocale returns the UI locale ("en" or "ja") inferred from the OS
 // environment. Used as the fallback when settings.Language is empty.
 // Default is "en" — Japanese only when LANG/LC_* explicitly says ja.

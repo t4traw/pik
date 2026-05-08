@@ -1,5 +1,66 @@
 export namespace git {
 	
+	export class ConflictRegion {
+	    startLine: number;
+	    endLine: number;
+	    oursLabel: string;
+	    theirsLabel: string;
+	    oursLines: string[];
+	    theirsLines: string[];
+	    baseLines: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new ConflictRegion(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.startLine = source["startLine"];
+	        this.endLine = source["endLine"];
+	        this.oursLabel = source["oursLabel"];
+	        this.theirsLabel = source["theirsLabel"];
+	        this.oursLines = source["oursLines"];
+	        this.theirsLines = source["theirsLines"];
+	        this.baseLines = source["baseLines"];
+	    }
+	}
+	export class ConflictFile {
+	    path: string;
+	    regions: ConflictRegion[];
+	    lines: string[];
+	    binary: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new ConflictFile(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.regions = this.convertValues(source["regions"], ConflictRegion);
+	        this.lines = source["lines"];
+	        this.binary = source["binary"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
 	export class DiffLine {
 	    op: string;
 	    text: string;
@@ -166,6 +227,27 @@ export namespace git {
 		    }
 		    return a;
 		}
+	}
+	
+	export class RebaseState {
+	    rebasing: boolean;
+	    merging: boolean;
+	    step: number;
+	    total: number;
+	    head: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new RebaseState(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.rebasing = source["rebasing"];
+	        this.merging = source["merging"];
+	        this.step = source["step"];
+	        this.total = source["total"];
+	        this.head = source["head"];
+	    }
 	}
 
 }

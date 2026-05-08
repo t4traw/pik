@@ -60,3 +60,30 @@ export interface PatchHunk {
   newStart: number
   lines: PatchLine[]
 }
+
+export interface ConflictRegion {
+  startLine: number
+  endLine: number
+  oursLabel: string
+  theirsLabel: string
+  oursLines: string[]
+  theirsLines: string[]
+  baseLines: string[]
+}
+
+export interface ConflictFile {
+  path: string
+  regions: ConflictRegion[]
+  lines: string[]
+  binary: boolean
+}
+
+export interface RebaseState {
+  rebasing: boolean
+  merging: boolean
+  step: number
+  total: number
+  head: string
+}
+
+export type ConflictChoice = 'ours' | 'theirs' | 'both' | null
