@@ -38,7 +38,15 @@ pik ~/repo   # パス指定
 
 ## 開発
 
-Go 1.23+、[Bun](https://bun.sh)、[Wails CLI](https://wails.io/docs/gettingstarted/installation) が必要。
+[mise](https://mise.jdx.dev) があれば一発 (Go・Bun・Wails CLI まで全部入る):
+
+```sh
+mise run setup   # Wails CLI と frontend 依存をインストール
+mise run dev     # ホットリロード開発サーバー (`make dev` のエイリアス)
+mise run doctor  # Wails ツールチェインの診断
+```
+
+mise を使わない場合は Go 1.23+、[Bun](https://bun.sh)、[Wails CLI](https://wails.io/docs/gettingstarted/installation) を自分で入れて:
 
 ```sh
 make dev       # ホットリロード開発サーバー

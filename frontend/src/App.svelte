@@ -9,6 +9,7 @@
   import SettingsModal from './lib/components/SettingsModal.svelte'
   import ShortcutsModal from './lib/components/ShortcutsModal.svelte'
   import ConflictsModal from './lib/components/ConflictsModal.svelte'
+  import ConfirmModal from './lib/components/ConfirmModal.svelte'
 
   onMount(() => {
     appStore.refresh()
@@ -57,7 +58,7 @@
       // Any modal open → swallow everything except Undo/Redo so shortcuts
       // don't mutate the file behind the dialog. Esc close is owned by the
       // modal component itself.
-      if (appStore.settingsOpen || appStore.shortcutsOpen || appStore.conflictsOpen) {
+      if (appStore.settingsOpen || appStore.shortcutsOpen || appStore.conflictsOpen || appStore.confirmOpen) {
         if (mod && k === 'z') {
           e.preventDefault()
           if (e.shiftKey) appStore.redo()
@@ -209,6 +210,7 @@
   <SettingsModal />
   <ShortcutsModal />
   <ConflictsModal />
+  <ConfirmModal />
 
   <!-- Main split -->
   <div class="flex-1 grid overflow-hidden" style="grid-template-columns: minmax(260px, 340px) 1fr;">

@@ -104,4 +104,8 @@ export const ja: Dict = {
   'conflict.someUnresolved': '残り {n} ファイル未解決',
   'conflict.openExternal': '外部エディタで開く',
   'conflict.closeAria': 'コンフリクト解消を閉じる',
+
+  'confirm.cancel': 'キャンセル',
+  'confirm.ok': 'OK',
+  'confirm.closeAria': 'ダイアログを閉じる',
 }

@@ -100,4 +100,8 @@ export const en = {
   'conflict.someUnresolved': '{n} file(s) still conflicted',
   'conflict.openExternal': 'Open in external editor',
   'conflict.closeAria': 'Close conflict resolver',
+
+  'confirm.cancel': 'Cancel',
+  'confirm.ok': 'OK',
+  'confirm.closeAria': 'Dismiss dialog',
 } as const

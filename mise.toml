@@ -1,0 +1,22 @@
+[tools]
+go = "1.25"
+bun = "1.3"
+
+[tasks.setup]
+description = "Install Wails CLI and frontend dependencies"
+run = [
+  "go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0",
+  "bun install --cwd frontend --frozen-lockfile",
+]
+
+[tasks.dev]
+description = "Hot-reload dev server"
+run = "make dev"
+
+[tasks.build]
+description = "Build pik.app"
+run = "make build"
+
+[tasks.doctor]
+description = "Verify the Wails toolchain"
+run = "wails doctor"

@@ -70,7 +70,10 @@
     const msg = f.Untracked
       ? t('fileList.confirmDeleteUntracked', { path: f.Path })
       : t('fileList.confirmDiscardChanges', { path: f.Path })
-    if (confirm(msg)) await appStore.discard(f.Path, f.Untracked)
+    const label = f.Untracked ? t('fileList.delete') : t('fileList.discard')
+    if (await appStore.askConfirm(msg, { confirmLabel: label, danger: true })) {
+      await appStore.discard(f.Path, f.Untracked)
+    }
   }
 </script>
 

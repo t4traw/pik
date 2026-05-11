@@ -38,7 +38,15 @@ pik ~/repo   # explicit path
 
 ## Development
 
-Requires Go 1.23+, [Bun](https://bun.sh), and the [Wails CLI](https://wails.io/docs/gettingstarted/installation).
+With [mise](https://mise.jdx.dev) installed (manages Go + Bun + Wails CLI):
+
+```sh
+mise run setup   # install Wails CLI + frontend deps
+mise run dev     # hot-reload dev server (alias for `make dev`)
+mise run doctor  # verify the Wails toolchain
+```
+
+Without mise: install Go 1.23+, [Bun](https://bun.sh), and the [Wails CLI](https://wails.io/docs/gettingstarted/installation) yourself, then:
 
 ```sh
 make dev       # hot-reload dev server

@@ -59,6 +59,12 @@ class AppStore {
   conflictFiles = $state<ConflictFile[]>([])
   rebaseState = $state<RebaseState>({ rebasing: false, merging: false, step: 0, total: 0, head: '' })
 
+  confirmOpen = $state<boolean>(false)
+  confirmMessage = $state<string>('')
+  confirmLabel = $state<string>('')
+  confirmDanger = $state<boolean>(false)
+  private confirmResolver: ((v: boolean) => void) | null = null
+
   generating = $state<boolean>(false)
 
   get selectedFile(): FileStatus | undefined {
@@ -208,7 +214,29 @@ class AppStore {
     const msg = f.Untracked
       ? t('fileList.confirmDeleteUntracked', { path: f.Path })
       : t('fileList.confirmDiscardChanges', { path: f.Path })
-    if (confirm(msg)) await this.discard(f.Path, f.Untracked)
+    const label = f.Untracked ? t('fileList.delete') : t('fileList.discard')
+    if (await this.askConfirm(msg, { confirmLabel: label, danger: true })) {
+      await this.discard(f.Path, f.Untracked)
+    }
+  }
+
+  askConfirm(message: string, opts: { confirmLabel?: string; danger?: boolean } = {}): Promise<boolean> {
+    // Cancel any previous unresolved prompt so we never leak resolvers.
+    this.confirmResolver?.(false)
+    this.confirmMessage = message
+    this.confirmLabel = opts.confirmLabel ?? ''
+    this.confirmDanger = opts.danger ?? false
+    this.confirmOpen = true
+    return new Promise<boolean>((resolve) => {
+      this.confirmResolver = resolve
+    })
+  }
+
+  resolveConfirm(value: boolean) {
+    const r = this.confirmResolver
+    this.confirmResolver = null
+    this.confirmOpen = false
+    r?.(value)
   }
 
   async stage(path: string) {
