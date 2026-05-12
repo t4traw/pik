@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.7](https://github.com/t4traw/pik/compare/v0.1.6...v0.1.7) (2026-05-11)
+
+
+### Features
+
+* ネイティブ confirm をカスタムモーダルに置き換え ([490bffb](https://github.com/t4traw/pik/commit/490bffb1d00ff9eb1f5bb96b42fc097c21abd2bb))
+
 ## [0.1.6](https://github.com/t4traw/pik/compare/v0.1.5...v0.1.6) (2026-05-08)
 
 
